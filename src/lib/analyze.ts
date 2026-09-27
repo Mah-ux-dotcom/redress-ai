@@ -9,73 +9,176 @@
 
 import type {
   AutomationAnalysis,
+  AutomationInvolvement,
   AutomationStatus,
   ExtractedData,
   StatusSignal,
 } from '@/types';
 
 // ---------------------------------------------------------------------------
-// Signal dictionaries — explicit textual markers only.
+// Signal patterns — explicit textual markers only, matched per sentence so
+// every signal can be traced back to a verbatim quote.
+//
+// Deliberately NOT treated as evidence of automation: speed, standard or
+// generic wording, digital delivery ("this is an automated email"), or
+// phrases like "screening process" / "our review".
 // ---------------------------------------------------------------------------
 
-const AUTOMATED_PHRASES = [
-  'automated eligibility assessment',
-  'automated assessment',
-  'automated decision',
-  'automated processing',
-  'automated screening',
-  'automated system',
-  'automated review',
-  'automated evaluation',
-  'automated process',
-  'automated tool',
-  'algorithmic assessment',
-  'algorithmic decision',
-  'machine learning',
-  'ml model',
-  'scoring system',
-  'risk score',
-  'credit score',
-  'eligibility score',
-  'automated eligibility',
+type Pattern = { re: RegExp; text: string };
+
+/** Explicit statements that automated processing was used in the decision. */
+const AUTOMATED_PATTERNS: Pattern[] = [
+  {
+    re: /\bautomated\s+(?:[\w-]+\s+){0,2}(?:decision(?:-making)?|decisioning|processing|assessment|screening|system|review|evaluation|process|tool|model|moderation|check)s?\b/i,
+    text: 'The notice states that automated processing or an automated system was used',
+  },
+  {
+    re: /\bautomatic(?:ally)?\s+(?:declined|rejected|refused|assessed|decided|suspended|denied|scored|flagged)\b/i,
+    text: 'The notice states that the outcome was produced automatically',
+  },
 ];
 
-const AI_PHRASES = [
-  'ai',
-  'a.i.',
-  'artificial intelligence',
-  'ai model',
-  'ai system',
-  'ai-assisted',
-  'ai driven',
-  'ai-powered',
-  'powered by ai',
+/** Explicit references to AI / machine learning. Case-sensitive "AI" as a whole word only. */
+const AI_PATTERNS: Pattern[] = [
+  { re: /\bartificial intelligence\b/i, text: 'The notice refers to artificial intelligence' },
+  { re: /\bmachine[- ]learning\b/i, text: 'The notice refers to machine learning' },
+  { re: /(?:^|[^A-Za-z])(?:AI|A\.I\.)(?=$|[^A-Za-z])/, text: 'The notice refers to AI' },
 ];
 
-const ALGORITHM_PHRASES = [
-  'algorithm',
-  'algorithmic',
-  'algorithmically',
-  'scoring algorithm',
-  'ranking algorithm',
+/** Statements that the decision was made by a system without a person. */
+const SOLELY_PATTERNS: Pattern[] = [
+  {
+    re: /\b(?:solely|fully|entirely|wholly|purely|completely)\s+(?:by\s+)?(?:automated|automatic|by\s+(?:an?|our|the)\s+(?:automated\s+)?system)/i,
+    text: 'The notice states the decision was made solely / fully by automated means',
+  },
+  {
+    re: /\b(?:without|no)\s+(?:any\s+)?(?:(?:human|manual|staff)\s+(?:review|involvement|intervention|input|oversight|assessment|decision)|human|a person)\b/i,
+    text: 'The notice states there was no human involvement',
+  },
+  {
+    re: /\bdecision\s+(?:was|has been)\s+(?:made|taken|reached|generated)\s+(?:by|using)\s+(?:an?|our|the)\s+(?:[\w-]+\s+){0,2}(?:automated|automatic|ai|algorithmic)\b/i,
+    text: 'The notice states the decision was made by an automated system',
+  },
 ];
 
-const HUMAN_PHRASES = [
-  'human review',
-  'manual review',
-  'reviewed by a person',
-  'reviewed by our team',
-  'reviewed by a human',
-  'reviewed by a specialist',
-  'underwriter',
-  'case officer',
-  'case manager',
-  'human decision',
-  'manually assessed',
-  'reviewed individually',
-  'human appeal',
-  'human consideration',
+/** Algorithmic / scoring language — suggests automated tools, does not confirm them. */
+const ALGORITHM_PATTERNS: Pattern[] = [
+  { re: /\balgorithm(?:s|ic|ically)?\b/i, text: 'The notice refers to an algorithm or algorithmic process' },
+  { re: /\bscoring\s+(?:system|model|engine|tool)\b/i, text: 'The notice refers to a scoring system or model' },
+  { re: /\bprofiling\b/i, text: 'The notice refers to profiling' },
+  {
+    re: /\bour\s+systems?\s+(?:identified|detected|flagged|determined|calculated)\b/i,
+    text: 'The notice says "our system" identified or determined something',
+  },
 ];
+
+/** Scores alone are weak evidence — people use scores too. */
+const SCORE_PATTERNS: Pattern[] = [
+  {
+    re: /\b(?:credit|risk|eligibility|fraud|affordability)\s+scor(?:e|es|ing)\b/i,
+    text: 'The notice refers to a score (e.g. credit or risk score)',
+  },
+];
+
+/** A human made, reviewed or assessed the decision. */
+const HUMAN_PATTERNS: Pattern[] = [
+  {
+    re: /\b(?:reviewed|review|assessed|considered|decided|made|examined|evaluated|checked|determined)\s+(?:individually\s+|manually\s+|carefully\s+|personally\s+)?by\s+(?:a|an|our|the|one of our)\s+(?:[\w-]+\s+){0,3}(?:specialists?|officers?|team|underwriters?|person|people|staff|caseworkers?|case workers?|advisers?|advisors?|managers?|assessors?|panel|humans?|reviewers?|colleagues?|members? of (?:staff|our team))\b/i,
+    text: 'The notice states that a person or team reviewed or made the decision',
+  },
+  { re: /\bmanual(?:ly)?\s+(?:review(?:ed)?|assess(?:ed|ment)|check(?:ed)?)\b/i, text: 'The notice refers to a manual review or assessment' },
+  { re: /\bhuman\s+(?:review(?:er)?|decision(?:-maker)?|assessor|consideration)\b/i, text: 'The notice refers to a human review or human decision-maker' },
+  { re: /\b(?:underwriter|case\s*(?:officer|worker|manager)|caseworker)s?\b/i, text: 'The notice refers to an underwriter or case officer' },
+];
+
+/** Words that, appearing before a human-review phrase, make it an offered route rather than evidence. */
+const ROUTE_MARKERS =
+  /\b(?:request|ask|asking|appeal|if you|you may|you can|you could|you have the right|entitled|option|contact us|wish to|would like)\b/i;
+
+/** Digital-delivery wording — never counted as evidence of automated decision-making. */
+const DELIVERY_ONLY = /\bautomated\s+(?:e-?mail|message|notification|response|reply|letter|text|sms)\b|\bdo not reply\b/i;
+
+function splitSentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+function findFirst(sentence: string, patterns: Pattern[]): { pattern: Pattern; index: number } | null {
+  for (const pattern of patterns) {
+    const m = pattern.re.exec(sentence);
+    if (m) return { pattern, index: m.index };
+  }
+  return null;
+}
+
+/**
+ * Scan the decision text sentence by sentence and return every automation-
+ * or human-related signal together with the verbatim sentence it came from.
+ */
+export function findAutomationEvidence(rawText: string): StatusSignal[] {
+  const signals: StatusSignal[] = [];
+  const add = (sig: StatusSignal) => {
+    if (!signals.some((s) => s.type === sig.type && s.quote === sig.quote)) signals.push(sig);
+  };
+
+  for (const sentence of splitSentences(rawText)) {
+    const solely = findFirst(sentence, SOLELY_PATTERNS);
+    const automated = findFirst(sentence, AUTOMATED_PATTERNS);
+    const ai = findFirst(sentence, AI_PATTERNS);
+    const deliveryOnly = DELIVERY_ONLY.test(sentence);
+
+    if (deliveryOnly && !solely && !ai) {
+      // e.g. "This is an automated email — please do not reply."
+      add({
+        text: 'The notice was sent automatically — this is about delivery, not about how the decision was made',
+        quote: sentence,
+        type: 'neutral',
+        weight: 'weak',
+      });
+    } else {
+      if (automated) add({ text: automated.pattern.text, quote: sentence, type: 'automated', weight: 'strong' });
+      if (ai) add({ text: ai.pattern.text, quote: sentence, type: 'ai', weight: 'strong' });
+    }
+
+    // "Solely" statements only count when the sentence is not an offered route
+    // (e.g. "you have the right not to be subject to a decision made without human review").
+    if (solely) {
+      const before = sentence.slice(0, solely.index);
+      if (!ROUTE_MARKERS.test(before)) {
+        add({ text: solely.pattern.text, quote: sentence, type: 'solely', weight: 'strong' });
+      }
+    }
+
+    const algorithm = findFirst(sentence, ALGORITHM_PATTERNS);
+    if (algorithm && !automated && !ai) {
+      add({ text: algorithm.pattern.text, quote: sentence, type: 'algorithm', weight: 'moderate' });
+    }
+
+    const score = findFirst(sentence, SCORE_PATTERNS);
+    if (score && !automated && !ai && !algorithm) {
+      add({ text: score.pattern.text, quote: sentence, type: 'score', weight: 'weak' });
+    }
+
+    const human = findFirst(sentence, HUMAN_PATTERNS);
+    if (human && !solely) {
+      const before = sentence.slice(0, human.index);
+      if (ROUTE_MARKERS.test(before)) {
+        add({
+          text: 'The notice offers a review by a person as a route you can request',
+          quote: sentence,
+          type: 'human_route',
+          weight: 'weak',
+        });
+      } else {
+        add({ text: human.pattern.text, quote: sentence, type: 'human', weight: 'strong' });
+      }
+    }
+  }
+
+  return signals;
+}
 
 const APPEAL_PHRASES = [
   'appeal',
@@ -122,6 +225,7 @@ const DATE_PATTERNS = [
 // ---------------------------------------------------------------------------
 
 const ORG_PATTERNS = [
+  /(?:Regards|Sincerely|Best wishes|Yours faithfully|Yours sincerely),?[ \t]*\n[ \t]*([A-Z][A-Za-z0-9&' ]{2,40})/,
   /(?:from|by|at)\s+([A-Z][a-zA-Z0-9&'\s]{2,30}(?:Ltd|Limited|Inc|LLC|Corp|Corporation|Bank|Financial|Credit|Insurance|Services|Group|Capital|Trust)?)\b/g,
   /^([A-Z][a-zA-Z0-9&'\s]{2,30}(?:Ltd|Limited|Inc|LLC|Corp|Corporation))$/m,
   /Dear\s+(?:Mr|Ms|Mrs|Miss|Dr)\s+\w+,?\s*\n\s*(?:.*?\n){0,2}?\s*(?:Regards|Sincerely|Best),?\s*\n\s*([A-Z][a-zA-Z0-9&'\s]{2,40})/i,
@@ -144,7 +248,7 @@ const DECISION_TYPES: { keywords: string[]; type: string }[] = [
 ];
 
 const OUTCOME_KEYWORDS: { keywords: string[]; outcome: string }[] = [
-  { keywords: ['rejected', 'declined', 'unsuccessful', 'denied', 'refused'], outcome: 'Rejected / Denied' },
+  { keywords: ['rejected', 'declined', 'unsuccessful', 'not successful', 'denied', 'refused'], outcome: 'Rejected / Denied' },
   { keywords: ['suspended', 'restricted', 'locked', 'banned', 'terminated'], outcome: 'Suspended / Restricted' },
   { keywords: ['approved', 'accepted', 'successful', 'granted'], outcome: 'Approved / Accepted' },
 ];
@@ -157,13 +261,14 @@ export function extractDecision(rawText: string): ExtractedData {
   const text = rawText.trim();
   const lower = text.toLowerCase();
 
-  // --- Automation signals ---
-  const automatedMentioned = AUTOMATED_PHRASES.some((p) => lower.includes(p));
-  const aiMentioned = AI_PHRASES.some(
-    (p) => lower.includes(p) || lower.includes(p.toLowerCase()),
-  );
-  const algorithmMentioned = ALGORITHM_PHRASES.some((p) => lower.includes(p));
-  const humanReviewMentioned = HUMAN_PHRASES.some((p) => lower.includes(p));
+  // --- Automation signals (sentence-level, with verbatim quotes) ---
+  const automationEvidence = findAutomationEvidence(text);
+  const has = (type: StatusSignal['type']) => automationEvidence.some((s) => s.type === type);
+  const automatedMentioned = has('automated') || has('solely');
+  const aiMentioned = has('ai');
+  const algorithmMentioned = has('algorithm');
+  const humanReviewMentioned = has('human');
+  const humanReviewOffered = has('human_route');
 
   // --- Organization ---
   let organization: string | null = null;
@@ -206,6 +311,7 @@ export function extractDecision(rawText: string): ExtractedData {
   // --- Stated reason — look for reason-bearing sentences ---
   let statedReason: string | null = null;
   const reasonPatterns = [
+    /\b((?:did not|does not|do not|failed to) meet\s.{5,120}?)(?:\.|$)/i,
     /(?:based on|due to|because of|as a result of)\s+(.{10,120}?)(?:\.|$)/i,
     /(?:reason|basis)\s*[:.]\s*(.{10,120}?)(?:\.|$)/i,
     /(?:unfortunately|regrettably)[,.]\s+(.{10,120}?)(?:\.|$)/i,
@@ -277,6 +383,8 @@ export function extractDecision(rawText: string): ExtractedData {
     aiMentioned,
     algorithmMentioned,
     humanReviewMentioned,
+    humanReviewOffered,
+    automationEvidence,
     appealInstructions,
     deadline,
     contactMethod,
@@ -286,75 +394,149 @@ export function extractDecision(rawText: string): ExtractedData {
 
 // ---------------------------------------------------------------------------
 // Automation status determination — purely rule-based.
+//
+//   confirmed_automated — the text explicitly states automated processing / AI
+//                         was used, and no human decision-maker is mentioned.
+//   possibly_automated  — automation is mentioned alongside a human decision-
+//                         maker (AI-assisted), or only algorithmic / scoring
+//                         language appears.
+//   human_indicated     — the text states a person made or reviewed it, with
+//                         no automation mentioned.
+//   not_established     — the text does not say either way.
 // ---------------------------------------------------------------------------
 
 export function analyzeAutomation(extracted: ExtractedData): AutomationAnalysis {
-  const signals: StatusSignal[] = [];
+  const signals = extracted.automationEvidence ?? [];
+  const of = (...types: StatusSignal['type'][]) => signals.filter((s) => types.includes(s.type));
 
-  if (extracted.automatedMentioned) {
-    signals.push({
-      text: 'Explicit mention of "automated" processing',
-      type: 'automated',
-      weight: 'strong',
-    });
-  }
-  if (extracted.aiMentioned) {
-    signals.push({
-      text: 'Explicit mention of AI / artificial intelligence',
-      type: 'ai',
-      weight: 'strong',
-    });
-  }
-  if (extracted.algorithmMentioned) {
-    signals.push({
-      text: 'Explicit mention of an algorithm / algorithmic process',
-      type: 'algorithm',
-      weight: 'moderate',
-    });
-  }
-  if (extracted.humanReviewMentioned) {
-    signals.push({
-      text: 'Human review or manual assessment is mentioned',
-      type: 'human',
-      weight: 'strong',
-    });
-  }
-
-  const strongAutomated = signals.filter(
-    (s) => (s.type === 'automated' || s.type === 'ai') && s.weight === 'strong',
-  );
-  const moderateAutomated = signals.filter(
-    (s) => s.type === 'algorithm' && s.weight === 'moderate',
-  );
-  const humanSignals = signals.filter((s) => s.type === 'human');
+  const explicit = of('automated', 'ai', 'solely');
+  const solely = of('solely');
+  const algorithmic = of('algorithm');
+  const scores = of('score');
+  const human = of('human');
+  const routes = of('human_route');
 
   let status: AutomationStatus;
+  let involvement: AutomationInvolvement;
   let explanation: string;
+  const suggests: string[] = [];
+  const notEstablished: string[] = [];
+  const nextSteps: string[] = [];
 
-  if (strongAutomated.length > 0 && humanSignals.length === 0) {
+  if (explicit.length > 0 && human.length === 0) {
     status = 'confirmed_automated';
+    involvement = solely.length > 0 ? 'solely_automated' : 'role_unclear';
     explanation =
-      'The decision text explicitly references automated processing, AI, or an algorithmic system, with no indication of human review. This strongly suggests an automated decision was made.';
-  } else if (strongAutomated.length > 0 && humanSignals.length > 0) {
+      involvement === 'solely_automated'
+        ? 'The notice explicitly says automated processing was used and indicates the decision was made without a person. On the face of the notice, this appears to be a solely automated decision.'
+        : 'The notice explicitly says automated processing or AI was used in reaching the decision. It does not say whether a person was also involved in making the final decision.';
+    suggests.push('Automated processing was used as part of this decision — the organisation says so itself.');
+    if (involvement === 'solely_automated') {
+      suggests.push('The decision may have been made without meaningful human involvement. If so, rules on solely automated decisions may be relevant, depending on your jurisdiction and the effect of the decision.');
+      notEstablished.push('Whether anyone checked the outcome before it was sent to you — ask the organisation to confirm.');
+    } else {
+      notEstablished.push('Whether the decision was made solely by the automated system, or whether a person reviewed or made the final decision (the "solely automated" vs "AI-assisted" question).');
+    }
+    notEstablished.push('Which information about you the system used, and how each factor affected the outcome.');
+    notEstablished.push('Whether any legal right specific to automated decisions applies — that depends on your jurisdiction, the effect of the decision and the organisation’s legal basis.');
+    nextSteps.push('Ask the organisation to confirm whether a person was involved in the final decision, and if so, what their role was.');
+    nextSteps.push('Ask for meaningful information about how the automated system reached this outcome and which data about you it used.');
+    nextSteps.push('Request that a person reviews the decision and that you are given a chance to explain your circumstances.');
+  } else if (explicit.length > 0 && human.length > 0) {
     status = 'possibly_automated';
+    involvement = 'ai_assisted';
     explanation =
-      'The text references automated or AI-based processing but also mentions human review. The decision may have been automated with human oversight, or automated with a human appeal pathway.';
-  } else if (moderateAutomated.length > 0 && humanSignals.length === 0) {
+      'The notice mentions automated processing or AI, and also says a person reviewed or made the decision. This points to an AI-assisted decision: automated tools may have contributed, but the evidence does not establish that the final decision was made solely by an automated system.';
+    suggests.push('Automated tools contributed to the process in some way.');
+    suggests.push('A person appears to have been involved in the decision.');
+    notEstablished.push('How much weight the person gave to the automated output, and whether their review was meaningful or a formality.');
+    notEstablished.push('Which information about you the automated tools used.');
+    notEstablished.push('Whether rules on solely automated decisions apply — the human involvement mentioned may mean they do not, but that depends on how meaningful it was.');
+    nextSteps.push('Ask what role the automated system played and what role the person played.');
+    nextSteps.push('Ask for the specific reasons and factors, including what the automated system contributed.');
+    nextSteps.push('Ask for a fresh review by a different person, and provide any information you think was missed.');
+  } else if (algorithmic.length > 0) {
     status = 'possibly_automated';
+    involvement = human.length > 0 ? 'ai_assisted' : 'role_unclear';
     explanation =
-      'The text references an algorithm or algorithmic process, which may indicate automated decision-making, but does not explicitly confirm AI or a fully automated system.';
-  } else if (humanSignals.length > 0 && strongAutomated.length === 0) {
+      human.length > 0
+        ? 'The notice refers to an algorithm or scoring system and also to a person reviewing the decision. Automated tools may have assisted a human decision-maker; the notice does not establish the role each played.'
+        : 'The notice refers to an algorithm, scoring system or "our system". This may indicate automated processing, but the notice does not state that the decision itself was automated or whether a person was involved.';
+    suggests.push('An algorithm or scoring system appears to have been used somewhere in the process.');
+    if (human.length > 0) suggests.push('A person appears to have been involved in the decision.');
+    notEstablished.push('Whether the algorithm made the decision or only informed a person who made it.');
+    notEstablished.push('Whether any AI or machine learning was involved — the notice does not say so.');
+    notEstablished.push('Which information about you was used.');
+    nextSteps.push('Ask whether the decision was made by an automated system, and whether a person reviewed it.');
+    nextSteps.push('Ask what the algorithm or score measured and which data about you it used.');
+    nextSteps.push('Request human review or reconsideration of the decision.');
+  } else if (human.length > 0) {
     status = 'human_indicated';
+    involvement = 'human';
     explanation =
-      'The text indicates that a human reviewed or made the decision. No explicit references to automated or AI-based processing were found.';
+      'The notice states that a person or team reviewed or made the decision. It does not mention automated processing or AI.';
+    suggests.push('A human decision-maker was involved.');
+    notEstablished.push('Whether automated tools (for example a score or risk flag) informed the person’s decision — the notice does not say either way.');
+    notEstablished.push('Whether the reviewer considered all the information you provided.');
+    nextSteps.push('Ask for the specific reasons and the information the decision-maker relied on.');
+    nextSteps.push('Ask whether any automated tools or scores were used to support the decision.');
+    nextSteps.push('Use the organisation’s appeal or review route to ask for reconsideration, ideally by a different person.');
   } else {
     status = 'not_established';
+    involvement = 'not_established';
     explanation =
-      'Automated decision-making was not confirmed from the material provided. The text does not explicitly mention AI, algorithms, or automated processing. This does not mean automation was not used — only that it was not stated.';
+      'The notice does not say whether automated processing or AI was used, or whether a person made the decision. This does not mean automation was not used — only that the evidence you provided does not establish it either way.';
+    notEstablished.push('Whether any automated system, algorithm or AI was involved.');
+    notEstablished.push('Whether a person made or reviewed the decision.');
+    notEstablished.push('The absence of a mention is not evidence that no automation was used — nor that it was.');
+    nextSteps.push('Ask the organisation whether automated processing or AI was involved in the decision.');
+    nextSteps.push('Ask what role any automated system played, and whether a person reviewed the decision.');
+    nextSteps.push('Request the information the decision was based on — in many jurisdictions you can request a copy of the personal data an organisation holds about you.');
+    nextSteps.push('Ask for the decision to be reconsidered by a person, if a review route is available.');
   }
 
-  return { status, signals, explanation };
+  if (scores.length > 0) {
+    suggests.push('The notice mentions a score. Scores are often calculated by automated systems, but a score alone does not show who or what made the decision.');
+  }
+  if (routes.length > 0) {
+    suggests.push('The organisation offers a review by a person as a route you can request.');
+    if (status !== 'human_indicated') {
+      notEstablished.push('Offering a human review later does not tell us whether a person was involved in the original decision.');
+    }
+  }
+  if (!extracted.statedReason) {
+    notEstablished.push('The specific reason for the decision — no clear reason was found in the notice.');
+  }
+
+  nextSteps.push('Preserve the original decision exactly as you received it, plus any related emails or documents.');
+  nextSteps.push('If the organisation does not resolve it, identify the escalation route for your jurisdiction (select it in the next step).');
+
+  return { status, involvement, signals, explanation, suggests, notEstablished, nextSteps };
 }
+
+/** Labels for the solely-automated vs AI-assisted distinction. */
+export const INVOLVEMENT_META: Record<AutomationInvolvement, { label: string; description: string }> = {
+  solely_automated: {
+    label: 'Solely automated (indicated)',
+    description: 'The decision appears to have been made without meaningful human involvement.',
+  },
+  role_unclear: {
+    label: 'Automation involved — human role not established',
+    description: 'Automated processing was used, but the evidence does not show whether a person made or reviewed the final decision.',
+  },
+  ai_assisted: {
+    label: 'AI-assisted',
+    description: 'Automated tools may have contributed, but the evidence does not establish that the final decision was made solely by an automated system.',
+  },
+  human: {
+    label: 'Human decision indicated',
+    description: 'The evidence indicates a human decision-maker was involved.',
+  },
+  not_established: {
+    label: 'Not established',
+    description: 'The evidence does not establish what role, if any, automation or AI played.',
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Status metadata for UI rendering
@@ -373,7 +555,7 @@ export const STATUS_META: Record<
     icon: 'alert',
   },
   possibly_automated: {
-    label: 'Possibly Automated',
+    label: 'Possibly Automated / AI-Assisted',
     shortLabel: 'POSSIBLY',
     color: 'text-warning-700',
     bgColor: 'bg-warning-50',

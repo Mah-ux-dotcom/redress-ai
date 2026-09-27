@@ -69,50 +69,83 @@ export function generateChallengeLetter(params: GenerateParams): ChallengeLetter
     lines.push('');
   }
 
-  // --- Automation status — factual, from the text ---
-  lines.push('I would like to clarify the following about the decision:');
+  // --- Automation status — factual, from the text, never an accusation ---
+  const quoted = automation.signals.find((s) => s.type === 'solely')
+    ?? automation.signals.find((s) => s.type === 'automated' || s.type === 'ai')
+    ?? automation.signals.find((s) => s.type === 'algorithm');
+  const humanQuote = automation.signals.find((s) => s.type === 'human');
+
+  if (automation.status === 'confirmed_automated' && quoted) {
+    lines.push(`Your communication states: "${quoted.quote}"`);
+    lines.push('');
+  } else if (automation.status === 'possibly_automated' && quoted) {
+    lines.push(`Your communication refers to the following: "${quoted.quote}"${humanQuote ? ` It also states: "${humanQuote.quote}"` : ''}`);
+    lines.push('');
+  } else if (automation.status === 'human_indicated' && humanQuote) {
+    lines.push(`Your communication states: "${humanQuote.quote}"`);
+    lines.push('');
+  }
+
+  lines.push('I would be grateful if you would answer the following:');
   lines.push('');
 
   const requests: string[] = [];
 
   if (automation.status === 'confirmed_automated') {
     requests.push(
-      'Your communication references automated processing. Please confirm whether this decision was made solely by an automated system or whether a human reviewed it.',
+      automation.involvement === 'solely_automated'
+        ? 'Please confirm whether this decision was made solely by automated means, without any person reviewing it before it was issued.'
+        : 'Please confirm whether this decision was made solely by the automated system you refer to, or whether a person reviewed or made the final decision — and if so, what their role was.',
     );
+    requests.push('Please explain how the automated processing was used in reaching this decision, and which information about me it used.');
+    requests.push('Please arrange for a person to review this decision, and let me know how I can give my view and provide any further information.');
   } else if (automation.status === 'possibly_automated') {
-    requests.push(
-      'Your communication appears to reference automated or algorithmic processing. Please clarify whether automated or AI-based processing was used in this decision.',
-    );
+    requests.push('Please confirm whether automated processing, an algorithm or AI was used in making this decision, and what role it played.');
+    requests.push('Please confirm whether a person made or reviewed the final decision, and what that review involved.');
+    requests.push('Please let me know how I can ask for the decision to be reconsidered by a person, and give my view.');
   } else if (automation.status === 'not_established') {
-    requests.push(
-      'Please confirm whether any automated, algorithmic, or AI-based processing was used in making this decision.',
-    );
+    requests.push('Please confirm whether any automated or AI-assisted processing was used in making this decision.');
+    requests.push('If it was, please explain what role it played in the outcome.');
+    requests.push('Please confirm whether a person reviewed or made this decision.');
+    requests.push('Please explain how this decision can be reviewed or challenged, including whether I can ask for it to be reconsidered by a person.');
   } else {
+    requests.push('Please confirm whether any automated tools, scores or AI were used to support this decision, and if so, what role they played.');
+    requests.push('Please explain how I can ask for this decision to be reconsidered, ideally by a different person.');
+  }
+
+  requests.push('Please provide the specific reasons and factors that led to the decision, including the information about me that was used.');
+
+  // Jurisdiction references — conditional, and only where a specific jurisdiction is known.
+  if (jurisdiction === 'UK' || jurisdiction === 'EU') {
+    const law = jurisdiction === 'UK' ? 'the UK GDPR' : 'the GDPR';
     requests.push(
-      'Please confirm the role of any automated or AI-based processing in this decision, if applicable.',
+      `Please treat this letter as a request for access to the personal data you hold about me under Article 15 of ${law}.`,
+    );
+    if (automation.status === 'confirmed_automated') {
+      requests.push(
+        `If this decision was based solely on automated processing and has a legal or similarly significant effect on me, please provide meaningful information about the logic involved, and the safeguards available under ${law} — including the ability to obtain human intervention, to express my point of view and to contest the decision.`,
+      );
+    } else {
+      requests.push(
+        `If this decision was based solely on automated processing, please tell me so, and provide the information and safeguards that apply to such decisions under ${law}.`,
+      );
+    }
+  } else if (jurisdiction === 'US') {
+    if (extracted.decisionType === 'Loan / Credit Application') {
+      requests.push(
+        'If this is an adverse action on a credit application, please provide the statement of specific reasons required by the Equal Credit Opportunity Act and Regulation B.',
+      );
+    }
+    requests.push(
+      'If a consumer report was used in this decision, please identify the consumer reporting agency so that I can obtain a copy and dispute any inaccurate information.',
     );
   }
 
-  requests.push('Please provide the specific reasons and factors that led to the decision, including any information or data about me that was used.');
-  requests.push('Please confirm whether I am entitled to human review of this decision and, if so, how I may request it.');
+  requests.push('If any information used in the decision is incorrect, please correct it and reconsider the decision.');
 
-  if (jurisdiction) {
-    const jurisdictionLabel: Record<JurisdictionCode, string> = {
-      UK: 'the UK GDPR and Data Protection Act 2018',
-      EU: 'the GDPR and the EU AI Act',
-      US: 'applicable federal and state consumer protection laws',
-      GENERAL: 'applicable data protection and consumer protection laws',
-    };
-    requests.push(
-      `Please also provide the information I am entitled to request under ${jurisdictionLabel[jurisdiction]}, including meaningful information about the logic of any automated processing involved.`,
-    );
-  }
-
-  requests.push('If any factual information used in the decision appears to be incorrect, please correct it and reconsider the decision.');
-
-  for (const r of requests) {
-    lines.push(`1. ${r}`);
-  }
+  requests.forEach((r, i) => {
+    lines.push(`${i + 1}. ${r}`);
+  });
   lines.push('');
 
   // --- Response request ---

@@ -1,7 +1,7 @@
 import { Check, ChevronRight, BookOpen, AlertCircle } from 'lucide-react';
 import type { JurisdictionCode, RightsOption } from '@/types';
 import { CONFIDENCE_META } from '@/lib/rightsGenerator';
-import { getJurisdiction } from '@/legal/jurisdictions';
+import { getJurisdiction, isSpecificJurisdiction, LEGAL_REFERENCE_LAST_REVIEWED } from '@/legal/jurisdictions';
 
 interface RightsOptionsProps {
   options: RightsOption[];
@@ -20,9 +20,9 @@ export function RightsOptions({ options, jurisdiction, onContinue }: RightsOptio
           Potentially relevant options
         </h2>
         <p className="text-sm text-ink-500">
-          {jurisdiction
-            ? `Based on the selected jurisdiction (${jur?.label}). Each option includes context and a confidence level.`
-            : 'General guidance — select a jurisdiction for more specific options.'}
+          {isSpecificJurisdiction(jurisdiction)
+            ? `Based on the selected jurisdiction (${jur?.label}) and what your notice actually shows. Legal rights are described only where their conditions may be met.`
+            : 'General procedural guidance — no specific jurisdiction selected, so rights where you are may differ.'}
         </p>
       </div>
 
@@ -57,6 +57,28 @@ export function RightsOptions({ options, jurisdiction, onContinue }: RightsOptio
           );
         })}
       </div>
+
+      {/* Legal references with their conditions and limits */}
+      {jur && isSpecificJurisdiction(jurisdiction) && (
+        <details className="card mt-4 overflow-hidden">
+          <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink-700 hover:bg-ink-50">
+            Legal references for {jur.label} — when they apply and their limits
+          </summary>
+          <div className="space-y-3 border-t border-ink-100 p-4 text-xs text-ink-600">
+            {jur.frameworks.map((f) => (
+              <div key={f.shortName}>
+                <div className="font-semibold text-ink-800">{f.name}</div>
+                <div className="text-ink-400">{f.source}</div>
+                <div className="mt-1"><span className="font-semibold">Applies when: </span>{f.applicableWhen}</div>
+                <div><span className="font-semibold">Human review: </span>{f.humanReview}</div>
+                <div><span className="font-semibold">Limits: </span>{f.limitations}</div>
+                <div><span className="font-semibold">Status: </span>{f.currency}</div>
+              </div>
+            ))}
+            <div className="text-ink-400">References last reviewed {LEGAL_REFERENCE_LAST_REVIEWED}.</div>
+          </div>
+        </details>
+      )}
 
       {/* Jurisdiction disclaimer */}
       {jur && (
