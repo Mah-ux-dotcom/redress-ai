@@ -13,7 +13,7 @@ import type {
   JurisdictionCode,
   RightsOption,
 } from '@/types';
-import { extractDecision, analyzeAutomation } from '@/lib/analyze';
+import { extractDecision, analyzeAutomation, STATUS_META } from '@/lib/analyze';
 import { generateRightsOptions } from '@/lib/rightsGenerator';
 import { generateActionPlan } from '@/lib/actionPlan';
 import { generateChallengeLetter, generateCaseId } from '@/lib/challengeGenerator';
@@ -111,7 +111,7 @@ export default function App() {
 
   const handleJurisdictionContinue = useCallback(() => {
     if (!jurisdiction || !extracted || !automation) return;
-    const options = generateRightsOptions(automation, jurisdiction);
+    const options = generateRightsOptions(automation, jurisdiction, extracted);
     setRightsOptions(options);
     setStage('rights');
   }, [jurisdiction, extracted, automation]);
@@ -222,7 +222,11 @@ export default function App() {
                 </details>
 
               {stage === 'analysis' && (
-                <StatusCard analysis={automation} extracted={extracted} />
+                <StatusCard
+                  analysis={automation}
+                  extracted={extracted}
+                  onContinue={() => setStage('jurisdiction')}
+                />
               )}
 
               {stage === 'jurisdiction' && (
@@ -286,7 +290,7 @@ export default function App() {
                   <div className="section-title">Quick Reference</div>
                 </div>
                 <div className="space-y-2 p-4 text-xs">
-                  <QuickFact label="Status" value={automation.status.replace(/_/g, ' ')} />
+                  <QuickFact label="Status" value={STATUS_META[automation.status].label} />
                   <QuickFact label="Organization" value={extracted.organization} />
                   <QuickFact label="Input method" value={inputMethod} />
                   <QuickFact label="Jurisdiction" value={jurisdiction ?? 'Not selected'} />

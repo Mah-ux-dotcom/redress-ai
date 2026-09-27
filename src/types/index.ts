@@ -35,25 +35,66 @@ export interface ExtractedData {
   automatedMentioned: boolean;
   aiMentioned: boolean;
   algorithmMentioned: boolean;
+  /** A human made or reviewed the decision (not merely offered as a route). */
   humanReviewMentioned: boolean;
+  /** Human review / reconsideration is offered as a route the user can request. */
+  humanReviewOffered: boolean;
+  /** Traceable automation-related evidence found in the text (verbatim quotes). */
+  automationEvidence: StatusSignal[];
   appealInstructions: string | null;
   deadline: string | null;
   contactMethod: string | null;
   evidenceReferences: string[];
 }
 
-/** A single evidence signal that contributed to the automation status. */
+/**
+ * A single evidence signal that contributed to the automation status.
+ * Every signal is traceable: `quote` is the verbatim sentence from the
+ * user's decision text in which the signal was found.
+ */
 export interface StatusSignal {
+  /** Plain-language description of what was found. */
   text: string;
-  type: 'automated' | 'ai' | 'algorithm' | 'human' | 'neutral';
+  /** Verbatim excerpt from the decision text that the signal is based on. */
+  quote: string;
+  /**
+   * automated     — explicit automated processing / system
+   * ai            — explicit AI / machine learning
+   * solely        — text states no human involvement / decision made by an automated system
+   * algorithm     — algorithm or scoring system mentioned
+   * score         — a score is mentioned (weak: scores can be used by people too)
+   * human         — a human made or reviewed the decision
+   * human_route   — human review is offered as a route (not evidence of who decided)
+   * neutral       — noted but not counted (e.g. "automated email")
+   */
+  type: 'automated' | 'ai' | 'solely' | 'algorithm' | 'score' | 'human' | 'human_route' | 'neutral';
   weight: 'strong' | 'moderate' | 'weak';
 }
+
+/**
+ * The role automation appears to have played, as far as the evidence shows.
+ * Kept separate from AutomationStatus so "solely automated" is never
+ * collapsed into "AI-assisted" or "unknown".
+ */
+export type AutomationInvolvement =
+  | 'solely_automated'
+  | 'role_unclear'
+  | 'ai_assisted'
+  | 'human'
+  | 'not_established';
 
 /** Result of the automation-status analysis. */
 export interface AutomationAnalysis {
   status: AutomationStatus;
+  involvement: AutomationInvolvement;
   signals: StatusSignal[];
   explanation: string;
+  /** WHAT IT SUGGESTS — careful inferences drawn only from the signals. */
+  suggests: string[];
+  /** WHAT IT DOES NOT ESTABLISH — the important uncertainty. */
+  notEstablished: string[];
+  /** Practical next steps that follow from this evidence status. */
+  nextSteps: string[];
 }
 
 /** A right or option the user may have, with context. */
@@ -118,6 +159,18 @@ export interface LegalReference {
   disclaimer: string;
 }
 
+/**
+ * What kind of decision a framework is about. Used to avoid presenting,
+ * e.g., a solely-automated-decision safeguard as if it applied to any decision.
+ */
+export type FrameworkScope =
+  | 'solely_automated'
+  | 'ai_system'
+  | 'data_rights'
+  | 'credit'
+  | 'complaints'
+  | 'general';
+
 export interface LegalFramework {
   name: string;
   shortName: string;
@@ -125,6 +178,13 @@ export interface LegalFramework {
   rights: string[];
   source: string;
   applicableWhen: string;
+  scope: FrameworkScope;
+  /** Conditions and limitations that must be met before it applies. */
+  limitations: string;
+  /** Whether human review is required, available on request, or not provided by this framework. */
+  humanReview: string;
+  /** Currency note — commencement, amendments or uncertainty about status. */
+  currency: string;
 }
 
 /** An AI explanation response with provenance. */
