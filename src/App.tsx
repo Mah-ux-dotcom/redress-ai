@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { ShieldCheck, AlertCircle } from 'lucide-react';
+import { ShieldCheck, AlertCircle, Languages } from 'lucide-react';
 import type {
   ActionStep,
   AutomationAnalysis,
@@ -13,11 +13,16 @@ import type {
   JurisdictionCode,
   RightsOption,
 } from '@/types';
-import { extractDecision, analyzeAutomation, STATUS_META } from '@/lib/analyze';
+import { STATUS_META } from '@/lib/analyze';
 import { generateRightsOptions } from '@/lib/rightsGenerator';
 import { generateActionPlan } from '@/lib/actionPlan';
 import { generateChallengeLetter, generateCaseId } from '@/lib/challengeGenerator';
-import { DEMO_CASE } from '@/data/demoCase';
+import { DEMO_CASE, DEMO_CASE_DE } from '@/data/demoCase';
+import { createApertusClient } from '@/apertus/client';
+import { APERTUS_CONFIG } from '@/apertus/config';
+import { analyzeNotice, translateNotice } from '@/apertus/pipeline';
+import { detectLanguage, LANGUAGES } from '@/apertus/language';
+import type { NoticeTranslation } from '@/apertus/types';
 
 import { Header } from '@/components/Header';
 import { InputPanel } from '@/components/InputPanel';
@@ -65,6 +70,11 @@ export default function App() {
   const [challengeStatus, setChallengeStatus] = useState<ChallengeStatus>('draft');
   const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
   const [isDemo, setIsDemo] = useState(false);
+  const [translation, setTranslation] = useState<NoticeTranslation | null>(null);
+  const [translationNote, setTranslationNote] = useState<string | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const apertusClient = useMemo(() => createApertusClient(), []);
+  const demoUserName = rawText === DEMO_CASE_DE.decisionText ? DEMO_CASE_DE.userName : DEMO_CASE.userName;
 
   // --- Milestones for the case tracker ---
   const milestones: CaseMilestone[] = useMemo(() => {
@@ -79,17 +89,41 @@ export default function App() {
 
   // --- Handlers ---
   const handleInputSubmit = useCallback(
-    (text: string, method: InputMethod) => {
+    async (text: string, method: InputMethod) => {
       const id = generateCaseId();
-      const extractedData = extractDecision(text);
-      const automationResult = analyzeAutomation(extractedData);
+
+      // Non-English notice: Apertus translates it for analysis. The deterministic
+      // engine then analyses the translation and cross-checks evidence against
+      // the original wording. If translation fails, the original is analysed.
+      let noticeTranslation: NoticeTranslation | null = null;
+      let note: string | null = null;
+      const sourceLanguage = detectLanguage(text);
+      if (sourceLanguage !== 'en') {
+        const langLabel = LANGUAGES[sourceLanguage].label;
+        if (!apertusClient) {
+          note = `This notice appears to be in ${langLabel}. Translation needs the language model, which is turned off, so the original text was analysed directly and results may be incomplete.`;
+        } else {
+          setTranslating(true);
+          try {
+            noticeTranslation = await translateNotice(apertusClient, text);
+          } catch (err) {
+            const why = err instanceof Error ? err.message : 'unknown error';
+            note = `This notice appears to be in ${langLabel}, but it could not be translated (${why}). The original text was analysed directly, so results may be incomplete.`;
+          } finally {
+            setTranslating(false);
+          }
+        }
+      }
+      const { extracted: extractedData, automation: automationResult } = analyzeNotice(text, noticeTranslation);
 
       setCaseId(id);
       setRawText(text);
       setInputMethod(method);
       setExtracted(extractedData);
       setAutomation(automationResult);
-      setIsDemo(text === DEMO_CASE.decisionText);
+      setTranslation(noticeTranslation);
+      setTranslationNote(note);
+      setIsDemo(text === DEMO_CASE.decisionText || text === DEMO_CASE_DE.decisionText);
 
       // Auto-add decision to evidence
       const decisionEvidence: EvidenceItem = {
@@ -102,7 +136,7 @@ export default function App() {
       setEvidence([decisionEvidence]);
       setStage('analysis');
     },
-    [],
+    [apertusClient],
   );
 
   const handleJurisdictionSelect = useCallback((code: JurisdictionCode) => {
@@ -129,12 +163,12 @@ export default function App() {
       extracted,
       automation,
       jurisdiction,
-      userName: isDemo ? DEMO_CASE.userName : '[Your Name]',
+      userName: isDemo ? demoUserName : '[Your Name]',
       caseId,
     });
     setChallenge(letter);
     setStage('challenge');
-  }, [extracted, automation, jurisdiction, caseId, isDemo]);
+  }, [extracted, automation, jurisdiction, caseId, isDemo, demoUserName]);
 
   const handleChallengeContinue = useCallback(() => {
     if (challenge) {
@@ -181,6 +215,8 @@ export default function App() {
     setChallengeStatus('draft');
     setEvidence([]);
     setIsDemo(false);
+    setTranslation(null);
+    setTranslationNote(null);
   }, []);
 
   const handleBackToHome = useCallback(() => {
@@ -193,7 +229,9 @@ export default function App() {
       <Header caseId={caseId} onReset={handleBackToHome} />
 
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-        {stage === 'input' && <InputPanel onSubmit={handleInputSubmit} />}
+        {stage === 'input' && (
+          <InputPanel onSubmit={handleInputSubmit} busy={translating} apertusMode={APERTUS_CONFIG.mode} />
+        )}
 
         {stage !== 'input' && extracted && automation && (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
@@ -206,6 +244,26 @@ export default function App() {
                   <span>
                     <strong>Fictional demo case.</strong> {DEMO_CASE.fictionalNotice}
                   </span>
+                </div>
+              )}
+
+              {/* Translation status */}
+              {translation && (
+                <div className="mb-5 flex items-start gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm text-brand-700" data-testid="translation-banner">
+                  <Languages className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>
+                    <strong>Translated from {LANGUAGES[translation.sourceLanguage].label}</strong> by {translation.modelLabel} for
+                    analysis. REDRESS analysed the translation and cross-checked every piece of automation evidence against your
+                    original wording — evidence that appears only in the translation is not counted.
+                    {translation.droppedSentences > 0 &&
+                      ` ${translation.droppedSentences} translated sentence(s) did not match the original and were discarded.`}
+                  </span>
+                </div>
+              )}
+              {translationNote && (
+                <div className="mb-5 flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 px-4 py-2.5 text-sm text-warning-700">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{translationNote}</span>
                 </div>
               )}
 
@@ -250,7 +308,19 @@ export default function App() {
               )}
 
               {stage === 'challenge' && challenge && (
-                <ChallengeLetterView letter={challenge} onContinue={handleChallengeContinue} />
+                <ChallengeLetterView
+                  letter={challenge}
+                  onContinue={handleChallengeContinue}
+                  apertus={{
+                    client: apertusClient,
+                    rawText,
+                    extracted,
+                    automation,
+                    jurisdiction,
+                    defaultLanguage: translation?.sourceLanguage ?? 'en',
+                    userName: isDemo ? demoUserName : undefined,
+                  }}
+                />
               )}
 
               {stage === 'evidence' && (
@@ -270,6 +340,10 @@ export default function App() {
                   automation={automation}
                   jurisdiction={jurisdiction}
                   onRestart={handleReset}
+                  apertusClient={apertusClient}
+                  rawText={rawText}
+                  ruleBasedLetter={challenge?.body ?? ''}
+                  defaultLanguage={translation?.sourceLanguage ?? 'en'}
                 />
               )}
             </div>

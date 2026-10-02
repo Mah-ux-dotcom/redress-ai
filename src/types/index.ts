@@ -58,6 +58,11 @@ export interface StatusSignal {
   /** Verbatim excerpt from the decision text that the signal is based on. */
   quote: string;
   /**
+   * When the notice was translated: the verbatim sentence in the ORIGINAL
+   * language that `quote` (English) was translated from.
+   */
+  originalQuote?: string;
+  /**
    * automated     — explicit automated processing / system
    * ai            — explicit AI / machine learning
    * solely        — text states no human involvement / decision made by an automated system

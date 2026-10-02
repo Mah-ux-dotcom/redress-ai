@@ -2,15 +2,22 @@ import { useState } from 'react';
 import { MessageCircle, Send, BookOpen, AlertCircle, RefreshCw, ChevronRight } from 'lucide-react';
 import type { AutomationAnalysis, ExplainResponse, ExtractedData, JurisdictionCode } from '@/types';
 import { explain, SUGGESTED_QUESTIONS } from '@/ai/explainEngine';
+import type { ApertusClient, LanguageCode } from '@/apertus/types';
+import { ApertusPanel } from '@/components/ApertusPanel';
 
 interface ExplainModeProps {
   extracted: ExtractedData;
   automation: AutomationAnalysis;
   jurisdiction: JurisdictionCode | null;
   onRestart: () => void;
+  apertusClient: ApertusClient | null;
+  rawText: string;
+  ruleBasedLetter: string;
+  defaultLanguage: LanguageCode;
 }
 
-export function ExplainMode({ extracted, automation, jurisdiction, onRestart }: ExplainModeProps) {
+export function ExplainMode(props: ExplainModeProps) {
+  const { extracted, automation, jurisdiction, onRestart } = props;
   const [question, setQuestion] = useState('');
   const [response, setResponse] = useState<ExplainResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,6 +44,22 @@ export function ExplainMode({ extracted, automation, jurisdiction, onRestart }: 
           REDRESS answers only from your decision, the extracted data, and the selected jurisdiction. It does not invent law or facts.
         </p>
       </div>
+
+      {/* Apertus explanation with Receipts */}
+      <div className="mb-5">
+        <ApertusPanel
+          task="explain"
+          client={props.apertusClient}
+          rawText={props.rawText}
+          extracted={extracted}
+          automation={automation}
+          jurisdiction={jurisdiction}
+          ruleBasedLetter={props.ruleBasedLetter}
+          defaultLanguage={props.defaultLanguage}
+        />
+      </div>
+
+      <div className="section-title mb-2">Or ask REDRESS a specific question (rule-based)</div>
 
       {/* Suggested questions */}
       <div className="mb-4 flex flex-wrap gap-2">
