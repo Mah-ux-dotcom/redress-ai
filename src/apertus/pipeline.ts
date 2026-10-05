@@ -12,7 +12,7 @@
 
 import type { AutomationAnalysis, ExtractedData, JurisdictionCode, StatusSignal } from '@/types';
 import { analyzeAutomation, extractDecision } from '@/lib/analyze';
-import { explainFourPart } from '@/ai/explainEngine';
+import { explainFourPart, fallbackHelpText } from '@/ai/explainEngine';
 import { HUMAN_CUES, detectLanguage, hasAutomationCue } from './language';
 import { buildGenerationMessages, buildTranslationMessages, parseSentences, type GenerationTask } from './prompts';
 import { verifyAll } from './receipts';
@@ -121,6 +121,8 @@ export interface GenerateParams {
   /** Rule-based letter body, used as the fallback for the letter task. */
   ruleBasedLetter?: string;
   userName?: string;
+  /** For the 'answer' task: the user's free-form question. */
+  question?: string;
 }
 
 function parseDraft(content: string): DraftSentence[] {
@@ -142,6 +144,8 @@ function ruleBasedFallback(params: GenerateParams, reason: string): GroundedOutp
   const text =
     params.task === 'letter'
       ? params.ruleBasedLetter ?? ''
+      : params.task === 'answer'
+      ? fallbackHelpText()
       : explainFourPart({ question: '', extracted: params.extracted, automation: params.automation, jurisdiction: params.jurisdiction }).answer;
   const sentences = text
     .split('\n')
@@ -162,7 +166,7 @@ export async function generateGrounded(params: GenerateParams): Promise<Grounded
   const { client, task, language, sheet, automation } = params;
   if (!client) return ruleBasedFallback(params, 'Language-model features are turned off.');
   try {
-    const content = await client.complete(buildGenerationMessages(task, language, sheet, { userName: params.userName }), {
+    const content = await client.complete(buildGenerationMessages(task, language, sheet, { userName: params.userName, question: params.question }), {
       temperature: 0.2,
       maxTokens: 2000,
     });

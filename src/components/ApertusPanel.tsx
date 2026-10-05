@@ -8,8 +8,10 @@ import { generateGrounded } from '@/apertus/pipeline';
 import type { GenerationTask } from '@/apertus/prompts';
 import { ReceiptsView } from '@/components/ReceiptsView';
 
+type PanelTask = Exclude<GenerationTask, 'answer'>;
+
 interface ApertusPanelProps {
-  task: GenerationTask;
+  task: PanelTask;
   client: ApertusClient | null;
   rawText: string;
   extracted: ExtractedData;
@@ -21,7 +23,7 @@ interface ApertusPanelProps {
   defaultLanguage?: LanguageCode;
 }
 
-const COPY: Record<GenerationTask, { title: string; subtitle: string; button: string }> = {
+const COPY: Record<PanelTask, { title: string; subtitle: string; button: string }> = {
   explain: {
     title: 'Explain it to me — in your language',
     subtitle:

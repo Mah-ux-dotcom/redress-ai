@@ -13,17 +13,24 @@
 //   5. Automation  — asserting automation / AI requires cited evidence of it
 //   6. Solely      — asserting a solely automated decision requires the
 //                    engine to have found that
-//   7. Overclaims  — legal conclusions and guarantees are never allowed
+//   7. Human       — asserting a person made / reviewed the decision requires
+//                    cited evidence of human involvement
+//   8. Overclaims  — legal conclusions and guarantees are never allowed
+//
+// Framing lines (greetings, sign-offs, "the analysis does not cover that")
+// make no factual claim. They still go through checks 2–8, but they are not
+// counted as "verified" and the UI marks them as not checked against sources.
 //
 // Limits (stated in the UI too): this checks facts, numbers, quotes, law and
 // automation claims. It cannot judge tone or every nuance of meaning.
 // ============================================================================
 
 import type { AutomationAnalysis } from '@/types';
-import { automationSupportIds } from './factSheet';
+import { automationSupportIds, humanSupportIds } from './factSheet';
 import {
   ARTICLE_REFS,
   assertsAutomation,
+  assertsHumanDecision,
   HEDGE_MARKERS,
   LAW_NAMES,
   OVERCLAIM,
@@ -114,7 +121,15 @@ export function verifySentence(
     reasons.push('Claims the decision was solely automated — the evidence does not establish that');
   }
 
-  // 7. Overclaims
+  // 7. Human decision assertions
+  if (assertsHumanDecision(text) && !hedged) {
+    const support = humanSupportIds(sheet, automation);
+    if (!known.some((id) => support.has(id))) {
+      reasons.push('States that a person made or reviewed the decision, but cites no evidence of it');
+    }
+  }
+
+  // 8. Overclaims
   const over = text.match(OVERCLAIM);
   if (over) reasons.push(`States a legal conclusion or guarantee ("${over[0].trim()}") — REDRESS never does this`);
 
@@ -127,6 +142,9 @@ export function verifyAll(
   automation: AutomationAnalysis,
 ): { sentences: ReceiptSentence[]; summary: ReceiptsSummary } {
   const checked = sentences.map((s) => verifySentence(s, sheet, automation));
-  const verified = checked.filter((s) => s.verdict === 'verified').length;
-  return { sentences: checked, summary: { checked: checked.length, verified, blocked: checked.length - verified } };
+  // Framing lines make no factual claim: they are never counted as "verified",
+  // so the counter cannot overstate how much was checked against sources.
+  const claims = checked.filter((s) => !(s.framing && s.verdict === 'verified'));
+  const verified = claims.filter((s) => s.verdict === 'verified').length;
+  return { sentences: checked, summary: { checked: claims.length, verified, blocked: claims.length - verified } };
 }

@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { MessageCircle, Send, BookOpen, AlertCircle, RefreshCw, ChevronRight } from 'lucide-react';
 import type { AutomationAnalysis, ExplainResponse, ExtractedData, JurisdictionCode } from '@/types';
-import { explain, SUGGESTED_QUESTIONS } from '@/ai/explainEngine';
-import type { ApertusClient, LanguageCode } from '@/apertus/types';
+import { explain, matchesKnownTopic, SUGGESTED_QUESTIONS } from '@/ai/explainEngine';
+import type { ApertusClient, GroundedOutput, LanguageCode } from '@/apertus/types';
+import { buildFactSheet, letterRequestsFromBody } from '@/apertus/factSheet';
+import { generateGrounded } from '@/apertus/pipeline';
+import { detectLanguage } from '@/apertus/language';
 import { ApertusPanel } from '@/components/ApertusPanel';
+import { ReceiptsView } from '@/components/ReceiptsView';
 
 interface ExplainModeProps {
   extracted: ExtractedData;
@@ -20,19 +24,47 @@ export function ExplainMode(props: ExplainModeProps) {
   const { extracted, automation, jurisdiction, onRestart } = props;
   const [question, setQuestion] = useState('');
   const [response, setResponse] = useState<ExplainResponse | null>(null);
+  const [grounded, setGrounded] = useState<{ question: string; output: GroundedOutput } | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleAsk = (q?: string) => {
+  const sheet = useMemo(
+    () => buildFactSheet({ extracted, automation, jurisdiction, letterRequests: letterRequestsFromBody(props.ruleBasedLetter) }),
+    [extracted, automation, jurisdiction, props.ruleBasedLetter],
+  );
+
+  const handleAsk = async (q?: string) => {
     const query = q ?? question;
     if (!query.trim()) return;
+    if (q) setQuestion(q);
     setLoading(true);
-    // Simulate brief processing for UX
-    setTimeout(() => {
-      const result = explain({ question: query, extracted, automation, jurisdiction });
-      setResponse(result);
+    setResponse(null);
+    setGrounded(null);
+
+    // Known topics keep REDRESS's fixed, rule-based answers.
+    // Anything else goes to Apertus, and every sentence passes through Receipts.
+    if (matchesKnownTopic(query) || !props.apertusClient) {
+      setTimeout(() => {
+        setResponse(explain({ question: query, extracted, automation, jurisdiction }));
+        setLoading(false);
+      }, 300);
+      return;
+    }
+    try {
+      const output = await generateGrounded({
+        client: props.apertusClient,
+        task: 'answer',
+        language: detectLanguage(query),
+        question: query,
+        sheet,
+        extracted,
+        automation,
+        jurisdiction,
+        ruleBasedLetter: props.ruleBasedLetter,
+      });
+      setGrounded({ question: query, output });
+    } finally {
       setLoading(false);
-      if (q) setQuestion(q);
-    }, 300);
+    }
   };
 
   return (
@@ -95,6 +127,19 @@ export function ExplainMode(props: ExplainModeProps) {
           </button>
         </div>
       </div>
+
+      {/* Free-form answer, checked by Receipts */}
+      {grounded && (
+        <div className="card-lg animate-fade-in overflow-hidden" data-testid="freeform-answer">
+          <div className="border-b border-ink-200 bg-brand-50 px-5 py-3">
+            <div className="text-xs font-medium text-brand-700">Your question</div>
+            <div className="text-sm font-semibold text-ink-900">{grounded.question}</div>
+          </div>
+          <div className="p-5">
+            <ReceiptsView output={grounded.output} sheet={sheet} rawText={props.rawText} />
+          </div>
+        </div>
+      )}
 
       {/* Response */}
       {response && (

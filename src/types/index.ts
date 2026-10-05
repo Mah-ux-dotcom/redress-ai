@@ -14,7 +14,7 @@ export type AutomationStatus =
   | 'human_indicated';
 
 /** Jurisdictions supported by the MVP. */
-export type JurisdictionCode = 'UK' | 'EU' | 'US' | 'GENERAL';
+export type JurisdictionCode = 'UK' | 'EU' | 'CH' | 'US' | 'GENERAL';
 
 /** Challenge lifecycle status. */
 export type ChallengeStatus =

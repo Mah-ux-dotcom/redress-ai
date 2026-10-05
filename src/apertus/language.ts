@@ -93,6 +93,26 @@ export function assertsAutomation(text: string): boolean {
   return AUTOMATION_WORDS.test(t) || AUTOMATION_ACRONYMS.test(t);
 }
 
+/**
+ * Statements that a PERSON made or reviewed the decision (past tense / passive).
+ * Requests ("ask for a person to review") are not matched.
+ */
+const HUMAN_ASSERTION: RegExp[] = [
+  /\b(?:was|were|has been|had been)\s+(?:\w+\s+){0,2}(?:reviewed|decided|made|assessed|checked|taken)\s+(?:\w+\s+){0,2}by\s+(?:a|an|our|the|one of)\s+(?:\w+\s+){0,2}(?:person|human|member of staff|employee|officer|underwriter|team|specialist|caseworker|reviewer)/i,
+  /\b(?:a|the)\s+(?:person|human|member of staff|caseworker|underwriter)\s+(?:reviewed|made|decided|checked|assessed)\b/i,
+  /\bmanually\s+(?:reviewed|assessed|decided|checked)\b/i,
+  /\b(?:wurde|wurden|ist|hat)\b.{0,60}\bvon\s+(?:einer|einem|unserer|unserem|der|dem)\s+(?:\w+\s+)?(?:Person|Mensch|Mitarbeiter\w*|Sachbearbeiter\w*|Fachperson|Team|Spezialist\w*)\b.{0,40}\b(?:geprüft|getroffen|entschieden|bewertet|überprüft)/i,
+  /\bmanuell\s+(?:geprüft|überprüft|bewertet|entschieden)\b/i,
+  /\b(?:a|ont)\s+été\s+(?:\w+\s+){0,2}(?:examinée?s?|prise?s?|décidée?s?|vérifiée?s?|évaluée?s?)\s+par\s+(?:une?|notre|nos|le|la)\s+(?:\w+\s+)?(?:personne|humain|collaborat\w+|agent|conseill\w+|équipe|spécialiste)/i,
+  /\bmanuellement\s+(?:examinée?|vérifiée?|évaluée?)\b/i,
+  /(?:^|\s)(?:è|sono)\s+stat[aoie]\s+(?:\w+\s+){0,2}(?:esaminat\w|pres\w|decis\w|verificat\w|valutat\w)\s+da\s+(?:una?|uno|il|la|il nostro|la nostra|un nostro|una nostra)\s+(?:\w+\s+)?(?:persona|operatore|collaborat\w+|consulente|team|specialista|incaricat\w)/i,
+  /\bmanualmente\s+(?:esaminat\w|verificat\w|valutat\w)\b/i,
+];
+
+export function assertsHumanDecision(text: string): boolean {
+  return HUMAN_ASSERTION.some((re) => re.test(text));
+}
+
 /** Words that assert the decision was SOLELY automated. */
 export const SOLELY_ASSERTION: RegExp =
   /solely|fully automat|entirely automat|without (?:any )?human|ausschliesslich|ausschließlich|vollautomati|ohne menschlich|uniquement|exclusivement|entièrement automati|sans intervention humaine|esclusivamente|unicamente|interamente automati|senza intervento umano/i;
@@ -110,7 +130,7 @@ export const OVERCLAIM: RegExp =
 
 /** Statute / framework names that count as legal references. */
 export const LAW_NAMES: RegExp =
-  /\b(?:UK GDPR|GDPR|DSGVO|RGPD|FADP|revFADP|DSG|nDSG|LPD|nLPD|AI Act|KI-Verordnung|FCRA|ECOA|Regulation B|Reg\. B|DPA 2018|Data Protection Act|CCPA|Colorado AI Act)\b/g;
+  /\b(?:UK GDPR|GDPR|DSGVO|RGPD|FADP|revFADP|nFADP|DSG|nDSG|revDSG|LPD|nLPD|AI Act|KI-Verordnung|FCRA|ECOA|Regulation B|Reg\. B|DPA 2018|Data Protection Act|CCPA|Colorado AI Act)\b/g;
 
 /** Article / section numbers, e.g. "Art. 22", "Article 15(1)(h)", "§ 1002.9". */
 export const ARTICLE_REFS: RegExp = /\b(?:Art(?:icle|ikel|icolo)?\.?\s*\d+[A-Za-z]?|§\s*\d+(?:\.\d+)?|s\.\s*\d+)/gi;

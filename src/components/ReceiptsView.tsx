@@ -120,7 +120,7 @@ export function ReceiptsView({ output, sheet, rawText }: ReceiptsViewProps) {
           }
           if (s.framing) {
             return (
-              <p key={i} className="px-2.5 text-sm text-ink-600" data-verdict="framing">
+              <p key={i} className="px-2.5 text-sm text-ink-600" data-verdict="framing" title="Not a factual claim — not checked against sources">
                 {s.text}
               </p>
             );
@@ -193,8 +193,9 @@ export function ReceiptsView({ output, sheet, rawText }: ReceiptsViewProps) {
       {!isFallback && (
         <p className="flex items-start gap-1.5 text-[11px] text-ink-400">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Receipts checks citations, numbers, quotes, legal references, automation claims and legal conclusions against the facts
-          REDRESS established. It cannot judge tone or every nuance — read the text before you use it. Click a sentence to see its sources.
+          Receipts checks citations, numbers, quotes, legal references, automation and human-decision claims and legal conclusions
+          against the facts REDRESS established. Lines without a shield (greetings, sign-offs) make no factual claim and are not counted.
+          It cannot judge tone or every nuance — read the text before you use it. Click a sentence to see its sources.
         </p>
       )}
     </div>

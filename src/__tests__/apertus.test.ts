@@ -256,7 +256,8 @@ describe('Fallback to rule-based REDRESS', () => {
       'NovaCredit Loan Services hat meinen Antrag abgelehnt.',
       'Dieser Entscheid ist rechtswidrig.',
     ]);
-    expect(out.summary).toEqual({ checked: 3, verified: 2, blocked: 1 });
+    // The greeting is a framing line: shown, but not counted as a verified claim.
+    expect(out.summary).toEqual({ checked: 2, verified: 1, blocked: 1 });
   });
 
   it('falls back when language-model features are off', async () => {

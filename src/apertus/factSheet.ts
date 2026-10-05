@@ -23,6 +23,7 @@ function withAliases(text: string): string {
   const aliases: string[] = [];
   if (/\bGDPR\b/.test(text) && !/UK GDPR/.test(text)) aliases.push('DSGVO', 'RGPD');
   if (/AI Act/.test(text)) aliases.push('KI-Verordnung');
+  if (/\bFADP\b/.test(text)) aliases.push('revFADP', 'nFADP', 'DSG', 'nDSG', 'revDSG', 'LPD', 'nLPD');
   return aliases.length ? `${text} [also: ${aliases.join(', ')}]` : text;
 }
 
@@ -34,6 +35,14 @@ export interface FactSheetInput {
   jurisdiction: JurisdictionCode | null;
   /** Numbered requests from REDRESS's rule-based challenge letter. */
   letterRequests?: string[];
+}
+
+/** Fact IDs that may support a sentence asserting that a person made or reviewed the decision. */
+export function humanSupportIds(sheet: FactSheet, automation: AutomationAnalysis): Set<string> {
+  const ids = new Set<string>();
+  for (const f of sheet.facts) if (f.kind === 'evidence' && f.signalType === 'human') ids.add(f.id);
+  if (automation.status === 'human_indicated' || automation.involvement === 'ai_assisted') ids.add('D8');
+  return ids;
 }
 
 /** Fact IDs that may support a sentence asserting automation was used. */

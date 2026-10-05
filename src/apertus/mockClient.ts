@@ -410,7 +410,8 @@ export class MockApertusClient implements ApertusClient {
     if (task === 'translate') return this.translate(user);
     const language = (user.match(/LANGUAGE: (\w{2})/)?.[1] ?? 'en') as LanguageCode;
     const facts = JSON.parse(between(user, FACTS_START, FACTS_END) ?? '[]') as MockFact[];
-    const sentences = task === 'letter' ? this.letter(facts, language, user) : this.explain(facts, language);
+    const sentences =
+      task === 'letter' ? this.letter(facts, language, user) : task === 'answer' ? this.answer(facts, language) : this.explain(facts, language);
     return JSON.stringify({ sentences });
   }
 
@@ -465,6 +466,17 @@ export class MockApertusClient implements ApertusClient {
       const name = law.fact.split(': ')[0];
       out.push({ text: T.law[lang](name), cites: [law.id] });
     }
+    return out;
+  }
+
+  /** Stand-in answer to a free-form question: status, the main gap, the first step. */
+  private answer(facts: MockFact[], lang: LanguageCode): Out[] {
+    const get = (id: string) => facts.find((f) => f.id === id);
+    const { status, involvement } = statusFrom(get('D8')?.fact);
+    const out: Out[] = [{ text: T.status[lang](STATUS_LABEL[status][lang]), cites: ['D8'] }];
+    if (get('G1')) out.push({ text: T.gap[involvement][lang], cites: ['G1'] });
+    if (get('S1')) out.push({ text: T.askRole[status][lang], cites: ['S1'] });
+    if (this.demonstrateBlocking) out.push({ text: T.fakeConclusion[lang], cites: ['D8'] });
     return out;
   }
 
