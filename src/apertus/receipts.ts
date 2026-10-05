@@ -31,6 +31,7 @@ import {
   ARTICLE_REFS,
   assertsAutomation,
   assertsHumanDecision,
+  isNonClaim,
   HEDGE_MARKERS,
   LAW_NAMES,
   OVERCLAIM,
@@ -53,9 +54,9 @@ function quotedSpans(text: string): string[] {
   return spans;
 }
 
-/** Numbers in a sentence, ignoring a leading list marker such as "1." or "2)". */
+/** Numbers in a sentence, ignoring a leading list marker ("1.") and fact IDs written inline ("(E1)"). */
 function numbersIn(text: string): string[] {
-  const body = text.replace(/^\s*\d+[.)]\s+/, '');
+  const body = text.replace(/^\s*\d+[.)]\s+/, '').replace(/\b[DEGSLQ]\d{1,3}\b/g, ' ');
   return body.match(/\d+/g) ?? [];
 }
 
@@ -75,9 +76,13 @@ export function verifySentence(
 
   // 1. Citations
   if (unknown.length) reasons.push(`Cites sources that do not exist: ${unknown.join(', ')}`);
-  // A line counts as framing (greeting / sign-off) only if it cites nothing;
-  // anything citing sources is checked as content, whatever the model labelled it.
-  const framing = sentence.framing === true && cited.length === 0;
+  // A line counts as framing (greeting / sign-off, or a statement that the facts
+  // do NOT say something) only if it cites nothing; anything citing sources is
+  // checked as content, whatever the model labelled it.
+  const framing = cited.length === 0 && (sentence.framing === true || isNonClaim(text));
+
+  // 0. Malformed output: citation markup leaked into the sentence text.
+  if (/\bcites\s*"?\s*:/i.test(text)) reasons.push('Malformed model output: citation markup inside the sentence');
   if (framing) {
     if (text.length > 140) reasons.push('Too long for a greeting or sign-off line');
   } else if (known.length === 0) {

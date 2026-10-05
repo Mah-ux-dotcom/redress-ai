@@ -79,6 +79,10 @@ export interface GroundedOutput {
   modelLabel: string;
   /** Present when the model failed and REDRESS fell back. */
   fallbackReason?: string;
+  /** How the model's JSON was read: as-is, after the narrow repair, or salvaged item by item. */
+  parseQuality?: 'valid' | 'repaired' | 'salvaged';
+  /** Set when the model wrote in a different language from the one requested. */
+  languageMismatch?: LanguageCode;
 }
 
 /** One aligned sentence of a translated notice. */
@@ -96,4 +100,5 @@ export interface NoticeTranslation {
   modelLabel: string;
   /** Model sentences dropped because they did not match the original notice. */
   droppedSentences: number;
+  parseQuality?: 'valid' | 'repaired' | 'salvaged';
 }

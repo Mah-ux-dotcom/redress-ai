@@ -13,8 +13,8 @@
 import type { AutomationAnalysis, ExtractedData, JurisdictionCode, StatusSignal } from '@/types';
 import { analyzeAutomation, extractDecision } from '@/lib/analyze';
 import { explainFourPart, fallbackHelpText } from '@/ai/explainEngine';
-import { HUMAN_CUES, detectLanguage, hasAutomationCue } from './language';
-import { buildGenerationMessages, buildTranslationMessages, parseSentences, type GenerationTask } from './prompts';
+import { HUMAN_CUES, detectLanguage, detectOutputLanguage, hasAutomationCue } from './language';
+import { buildGenerationMessages, buildTranslationMessages, parseSentences, type GenerationTask, type ParseQuality } from './prompts';
 import { verifyAll } from './receipts';
 import type {
   AlignedSentence,
@@ -28,6 +28,16 @@ import type {
 
 const squash = (s: string) => s.replace(/\s+/g, ' ').trim();
 
+/** Replace `source` in `text`, tolerating differences in whitespace and line breaks. */
+function replaceLoosely(text: string, source: string, replacement: string): string {
+  const pattern = source
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('\\s+');
+  return text.replace(new RegExp(pattern), () => replacement);
+}
+
 // ---------------------------------------------------------------------------
 // Translation
 // ---------------------------------------------------------------------------
@@ -37,7 +47,7 @@ export async function translateNotice(client: ApertusClient, rawText: string): P
   if (sourceLanguage === 'en') return null;
 
   const content = await client.complete(buildTranslationMessages(rawText, sourceLanguage), { temperature: 0, maxTokens: 3000 });
-  const { items } = parseSentences(content);
+  const { items, quality } = parseSentences(content);
 
   const original = squash(rawText);
   const sentences: AlignedSentence[] = [];
@@ -51,11 +61,21 @@ export async function translateNotice(client: ApertusClient, rawText: string): P
   }
   if (sentences.length === 0) throw new Error('No usable translation in the model response');
 
-  // Rebuild the notice in English, preserving its line structure.
+  // Rebuild the notice in English, preserving its line structure. Matching
+  // tolerates whitespace / line-break differences (some models return \r\n
+  // or merge lines).
   let englishText = rawText;
-  for (const s of sentences) englishText = englishText.replace(s.source, s.english);
+  for (const s of sentences) englishText = replaceLoosely(englishText, s.source, s.english);
 
-  return { sourceLanguage, sentences, englishText, producedBy: client.kind, modelLabel: client.label, droppedSentences: dropped };
+  return {
+    sourceLanguage,
+    sentences,
+    englishText,
+    producedBy: client.kind,
+    modelLabel: client.label,
+    droppedSentences: dropped,
+    parseQuality: quality,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -125,8 +145,8 @@ export interface GenerateParams {
   question?: string;
 }
 
-function parseDraft(content: string): DraftSentence[] {
-  const { items } = parseSentences(content);
+function parseDraft(content: string): { drafts: DraftSentence[]; quality: ParseQuality } {
+  const { items, quality } = parseSentences(content);
   const out: DraftSentence[] = [];
   for (const s of items as { text?: unknown; cites?: unknown; framing?: unknown }[]) {
     if (typeof s?.text !== 'string' || !s.text.trim()) continue;
@@ -137,7 +157,7 @@ function parseDraft(content: string): DraftSentence[] {
     });
   }
   if (out.length === 0) throw new Error('Response has no usable sentences');
-  return out;
+  return { drafts: out, quality };
 }
 
 function ruleBasedFallback(params: GenerateParams, reason: string): GroundedOutput {
@@ -170,8 +190,18 @@ export async function generateGrounded(params: GenerateParams): Promise<Grounded
       temperature: 0.2,
       maxTokens: 2000,
     });
-    const { sentences, summary } = verifyAll(parseDraft(content), sheet, automation);
-    return { language, sentences, summary, producedBy: client.kind, modelLabel: client.label };
+    const { drafts, quality } = parseDraft(content);
+    const { sentences, summary } = verifyAll(drafts, sheet, automation);
+    const written = detectOutputLanguage(sentences.map((s) => s.text));
+    return {
+      language,
+      sentences,
+      summary,
+      producedBy: client.kind,
+      modelLabel: client.label,
+      parseQuality: quality,
+      ...(written && written !== language ? { languageMismatch: written } : {}),
+    };
   } catch (err) {
     const why = err instanceof Error ? err.message : 'unknown error';
     return ruleBasedFallback(params, `${client.label} was unavailable (${why}). Showing REDRESS's rule-based output in English instead.`);

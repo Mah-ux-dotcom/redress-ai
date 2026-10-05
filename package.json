@@ -1,17 +1,20 @@
 {
-  "name": "vite-react-typescript-starter",
+  "name": "redress",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "REDRESS — when an AI makes a decision about you, know what to do next. Grounded explanations and challenge letters, with every AI sentence checked by Receipts. Built on Apertus.",
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.bench.json",
     "test": "vitest run",
     "proxy": "node server/apertus-proxy.mjs",
-    "test:live": "LIVE_APERTUS=1 vitest run scripts/live-receipts.test.ts --dir ."
+    "test:live": "LIVE_APERTUS=1 vitest run scripts/live-receipts.test.ts --dir .",
+    "benchmark:apertus": "NODE_USE_ENV_PROXY=1 vite-node benchmarks/run.ts --"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",

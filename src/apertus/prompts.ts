@@ -94,15 +94,32 @@ export function salvageObjects(content: string): Record<string, unknown>[] {
   return out;
 }
 
-/** The "sentences" array from a model response, salvaging valid items if the JSON is broken. */
-export function parseSentences(content: string): { items: unknown[]; salvaged: boolean } {
-  try {
-    const parsed = parseJsonObject(content) as { sentences?: unknown };
-    if (Array.isArray(parsed.sentences)) return { items: parsed.sentences, salvaged: false };
-  } catch {
-    // fall through to salvage
+/**
+ * One narrow, documented repair for a common small-model JSON error: a text
+ * value that is not closed before the next key, written as `.\"cites":`,
+ * `.\ncites":` or `.\ncites:` instead of `.","cites":`. Only that error family
+ * is changed (for the keys REDRESS uses); the result is still fully verified.
+ */
+export function repairJson(content: string): string {
+  return content.replace(/\\[n"]\s*"?(cites|framing|english|source)"?\s*:/g, '","$1":');
+}
+
+export type ParseQuality = 'valid' | 'repaired' | 'salvaged';
+
+/** The "sentences" array from a model response: as-is, after the narrow repair, or salvaged item by item. */
+export function parseSentences(content: string): { items: unknown[]; quality: ParseQuality } {
+  for (const [candidate, quality] of [
+    [content, 'valid'],
+    [repairJson(content), 'repaired'],
+  ] as const) {
+    try {
+      const parsed = parseJsonObject(candidate) as { sentences?: unknown };
+      if (Array.isArray(parsed.sentences)) return { items: parsed.sentences, quality };
+    } catch {
+      // try the next candidate
+    }
   }
-  return { items: salvageObjects(content), salvaged: true };
+  return { items: salvageObjects(repairJson(content)), quality: 'salvaged' };
 }
 
 /** Extract the first JSON object from a model response (tolerates code fences / chatter). */

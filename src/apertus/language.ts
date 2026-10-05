@@ -18,16 +18,19 @@ export const LANGUAGES: Record<LanguageCode, { label: string; native: string }> 
 export const LANGUAGE_CODES = Object.keys(LANGUAGES) as LanguageCode[];
 
 const STOPWORDS: Record<LanguageCode, string[]> = {
-  en: ['the', 'and', 'your', 'you', 'has', 'been', 'with', 'this', 'that', 'our', 'for', 'have', 'was', 'not', 'we'],
-  de: ['der', 'die', 'das', 'und', 'ihr', 'ihre', 'ihren', 'sie', 'wurde', 'nicht', 'mit', 'wir', 'ist', 'den', 'eine', 'auf', 'für'],
-  fr: ['le', 'la', 'les', 'et', 'votre', 'vous', 'nous', 'été', 'pas', 'une', 'des', 'pour', 'est', 'avec', 'que', 'du'],
-  it: ['il', 'la', 'le', 'e', 'la', 'sua', 'suo', 'stata', 'stato', 'non', 'una', 'per', 'con', 'che', 'del', 'della', 'gentile'],
+  en: ['the', 'and', 'your', 'you', 'has', 'been', 'with', 'this', 'that', 'our', 'for', 'have', 'was', 'not', 'we', 'i', 'my', 'can', 'did', 'what', 'who', 'why', 'is', 'it', 'of', 'to'],
+  de: ['der', 'die', 'das', 'und', 'ihr', 'ihre', 'ihren', 'sie', 'wurde', 'nicht', 'mit', 'wir', 'ist', 'den', 'eine', 'auf', 'für', 'ich', 'dass', 'ein', 'einen', 'kann', 'mein', 'meine', 'meinen', 'mir', 'mich', 'oder', 'wie', 'was', 'hat', 'habe', 'wurden', 'zu', 'von', 'warum'],
+  fr: ['le', 'la', 'les', 'et', 'votre', 'vous', 'nous', 'été', 'pas', 'une', 'des', 'pour', 'est', 'avec', 'que', 'du', 'je', 'mon', 'ma', 'mes', 'qui', 'quoi', 'ont', 'puis', 'peux', 'il', 'elle', 'sur', 'pourquoi', 'ce', 'cette'],
+  it: ['il', 'la', 'le', 'e', 'sua', 'suo', 'stata', 'stato', 'non', 'una', 'per', 'con', 'che', 'del', 'della', 'gentile', 'posso', 'io', 'mio', 'mia', 'i', 'gli', 'un', 'è', 'ho', 'come', 'cosa', 'chi', 'di', 'mi', 'perché', 'sono', 'ha'],
 };
 
-/** Best-guess language of a text by stopword frequency. Defaults to English. */
-export function detectLanguage(text: string): LanguageCode {
+/**
+ * Best-guess language of a text by stopword frequency. When the text gives no
+ * clear signal (for example a very short question), returns `fallback`.
+ */
+export function detectLanguage(text: string, fallback: LanguageCode = 'en'): LanguageCode {
   const words = text.toLowerCase().match(/[a-zà-öø-ÿ]+/g) ?? [];
-  if (words.length === 0) return 'en';
+  if (words.length === 0) return fallback;
   let best: LanguageCode = 'en';
   let bestScore = 0;
   for (const code of LANGUAGE_CODES) {
@@ -38,7 +41,21 @@ export function detectLanguage(text: string): LanguageCode {
       bestScore = score;
     }
   }
-  return bestScore < 0.04 ? 'en' : best;
+  return bestScore < 0.04 ? fallback : best;
+}
+
+/**
+ * The language a model output appears to be written in, ignoring quoted text
+ * (which may legitimately be in the notice's language). Returns null when the
+ * text gives no clear signal.
+ */
+export function detectOutputLanguage(sentences: string[]): LanguageCode | null {
+  const text = sentences
+    .join(' ')
+    .replace(/"[^"]*"|\u201C[^\u201D]*\u201D|\u201E[^\u201C\u201D]*[\u201C\u201D]|\u00AB[^\u00BB]*\u00BB/g, ' ');
+  const a = detectLanguage(text, 'en');
+  const b = detectLanguage(text, 'de');
+  return a === b ? a : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,7 +139,23 @@ export const SOLELY_ASSERTION: RegExp =
  * A sentence containing one of these is not treated as a factual assertion.
  */
 export const HEDGE_MARKERS: RegExp =
-  /\?|\bwhether\b|\bif\b|\bmay\b|\bmight\b|\bnot (?:established|stated|say|said|show|prove)|\bdoes not\b|\bdo not know\b|\bunclear\b|\bask\b|\bob\b|\bfalls\b|\bnicht\b|\bweder\b|\bkein(?:e|en)?\b|\bkönnte\b|\bunklar\b|\bfragen\b|\bsi\b|\bpas\b|\bne\b|\bni\b|\bn['’]|\bné\b|\bpeut-être\b|\bpourrait\b|\bdemander\b|\bse\b|\bnon\b|\bpotrebbe\b|\bchiedere\b|\bforse\b/i;
+  /\?|\bwhere applicable\b|\bif applicable\b|\bif so\b|\ble cas échéant\b|\bsi tel est le cas\b|\bgegebenenfalls\b|\bggf\.|\bfalls\b|\bse del caso\b|\bove applicabile\b|\bin tal caso\b|\beventualmente\b|\bwhether\b|\bif\b|\bmay\b|\bmight\b|\bnot (?:established|stated|say|said|show|prove)|\bdoes not\b|\bdo not know\b|\bunclear\b|\bask\b|\bob\b|\bfalls\b|\bnicht\b|\bweder\b|\bkein(?:e|en)?\b|\bkönnte\b|\bunklar\b|\bfragen\b|\bsi\b|\bpas\b|\bne\b|\bni\b|\bn['’]|\bné\b|\bpeut-être\b|\bpourrait\b|\bdemander\b|\bse\b|\bnon\b|\bpotrebbe\b|\bchiedere\b|\bforse\b/i;
+
+/**
+ * Statements that the facts do NOT say something ("the notice does not state
+ * whether…"). Made without citations, they are statements of absence, not
+ * factual claims, and are treated like framing lines (shown, not counted).
+ */
+const NON_CLAIM: RegExp[] = [
+  /\b(?:do|does|did)\s+not\s+(?:say|state|show|establish|prove|specify|mention|indicate|explain|cover|tell)\b|\bnot\s+(?:stated|established|specified|mentioned|known|clear)\b|\bthere is no information\b/i,
+  /\b(?:sagt|sagen|nennt|nennen|zeigt|zeigen|belegt|belegen|beweist|beweisen|erwähnt|erwähnen|geht)\b.{0,80}\b(?:nicht|keine?n?)\b|\bnicht\s+(?:bekannt|angegeben|ersichtlich|klar|festgestellt|belegt)\b/i,
+  /\b(?:ne|n['’])\s*(?:\S+\s+){0,3}?(?:dit|disent|précise\w*|prouve\w*|permet\w*|indique\w*|mentionne\w*|montre\w*|établi\w*|sait|savons)\b.{0,40}\b(?:pas|ni)\b/i,
+  /\bnon\b.{0,40}\b(?:dic\w+|indic\w+|precis\w+|dimostr\w+|stabilisc\w+|menzion\w+|specific\w+|prov\w+|permett\w+|chiar\w+)/i,
+];
+
+export function isNonClaim(text: string): boolean {
+  return NON_CLAIM.some((re) => re.test(text));
+}
 
 /** Legal conclusions, guarantees and certainty REDRESS never states as fact. */
 export const OVERCLAIM: RegExp =

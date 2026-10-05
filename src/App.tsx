@@ -391,7 +391,7 @@ export default function App() {
           <div className="flex flex-col items-center justify-between gap-2 text-xs text-ink-400 sm:flex-row">
             <div className="flex items-center gap-1.5">
               <span className="font-semibold text-ink-500">REDRESS</span>
-              <span>· LexHack 2026 · AI Safety, Ethics & Governance</span>
+              <span>· Built on Apertus · Hack Apertus 2026</span>
             </div>
             <div>Not legal advice. General information only. Verify with relevant authorities.</div>
           </div>

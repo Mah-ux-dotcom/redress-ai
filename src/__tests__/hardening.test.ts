@@ -15,7 +15,7 @@ import { JURISDICTIONS, getJurisdiction, isSpecificJurisdiction } from '@/legal/
 import { buildFactSheet, letterRequestsFromBody } from '@/apertus/factSheet';
 import { verifyAll, verifySentence } from '@/apertus/receipts';
 import { analyzeNotice, generateGrounded, translateNotice } from '@/apertus/pipeline';
-import { buildGenerationMessages, QUESTION_END, QUESTION_START } from '@/apertus/prompts';
+import { buildGenerationMessages, QUESTION_END, QUESTION_START, repairJson } from '@/apertus/prompts';
 import { MockApertusClient } from '@/apertus/mockClient';
 import { HttpApertusClient } from '@/apertus/client';
 import { LANGUAGE_CODES } from '@/apertus/language';
@@ -216,6 +216,128 @@ describe('Multilingual — translated claims and source associations', () => {
     const out = await generateGrounded({ client: fakeClient(''), task: 'explain', language: 'it', ...ctx, ruleBasedLetter: ctx.letter });
     expect(out.language).toBe('en');
     expect(out.fallbackReason).toMatch(/in English instead/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('Robust reading of model output (found in the 8B benchmark smoke run)', () => {
+  it('repairs only the escaped-quote-before-key error, and reports it', async () => {
+    const ctx = setup(DEMO_CASE.decisionText);
+    const broken = '{"sentences":[{"text":"NovaCredit Loan Services refused your loan.\\"cites":["D1"]},{"text":"This is illegal.\\"cites":["D8"]}]}';
+    const out = await generateGrounded({ client: fakeClient(broken), task: 'explain', language: 'en', ...ctx, ruleBasedLetter: ctx.letter });
+    expect(out.parseQuality).toBe('repaired');
+    expect(out.sentences.map((s) => s.text)).toEqual(['NovaCredit Loan Services refused your loan.', 'This is illegal.']);
+    expect(out.summary).toEqual({ checked: 2, verified: 1, blocked: 1 });
+  });
+
+  it('repairs the unclosed-text variants seen live from the 8B model', () => {
+    const variants = [
+      '{"sentences":[{"text":"Es wurde abgelehnt.\\ncites:["D2"]}]}',
+      '{"sentences":[{"text":"Sehr geehrte Damen und Herren,\\ncites":[],"framing":true}]}',
+      '{"sentences":[{"text":"Abgelehnt.\\"cites":["D2"]}]}',
+    ];
+    for (const v of variants) {
+      const parsed = JSON.parse(repairJson(v));
+      expect(parsed.sentences[0].cites, v).toBeDefined();
+      expect(parsed.sentences[0].text, v).not.toMatch(/cites/);
+    }
+  });
+
+  it('valid JSON is reported as valid and left untouched', async () => {
+    const ctx = setup(DEMO_CASE.decisionText);
+    const text = 'The notice quotes \\"text\\" verbatim.';
+    const ok = JSON.stringify({ sentences: [{ text: 'NovaCredit Loan Services refused your loan.', cites: ['D1'] }, { text, cites: ['D1'] }] });
+    const out = await generateGrounded({ client: fakeClient(ok), task: 'explain', language: 'en', ...ctx, ruleBasedLetter: ctx.letter });
+    expect(out.parseQuality).toBe('valid');
+    expect(out.sentences[1].text).toBe(text);
+  });
+
+  it('a translation that merges lines and uses \\r\\n still replaces the original text', async () => {
+    const notice = DEMO_CASE_DE.decisionText;
+    const merged = notice.split(/\n+/).join('\r\n');
+    const english = 'Dear Ms Keller\r\nYour application was rejected following our automated creditworthiness assessment.\r\nRegards,\r\nNovaCredit (Schweiz) AG';
+    const tr = await translateNotice(fakeClient(JSON.stringify({ sentences: [{ source: merged, english }] })), notice);
+    expect(tr!.englishText).not.toMatch(/Sehr geehrte/);
+    const { automation } = analyzeNotice(notice, tr);
+    expect(automation.status).toBe('confirmed_automated');
+    expect(automation.signals[0].originalQuote).toBe(merged);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe('Benchmark findings: checker false positives fixed, genuine errors still blocked', () => {
+  // Sentences below are taken verbatim from the first benchmark run (benchmarks/results/2026-10-05-12-11.json).
+  const conf = setup('Dear Applicant,\nYour credit application was assessed by our automated system and has been declined.\nRegards,\nExample Bank', 'UK');
+  const v = (text: string, cites: string[], c = conf) => verifySentence({ text, cites }, c.sheet, c.automation);
+
+  it('fact IDs written inline are not treated as invented numbers', () => {
+    expect(v('The notice states that automated processing was used (E1).', ['E1']).verdict).toBe('verified');
+  });
+
+  it('requests that mention the automated system, citing REDRESS next steps, are not blocked (confirmed status)', () => {
+    const s2 = conf.sheet.facts.find((f) => f.kind === 'step' && /how the automated system/.test(f.text))!.id;
+    for (const t of [
+      'You can request details on how the automated system reached this decision and which information about you was used.',
+      'Fordern Sie eine Erklärung an, wie das automatisierte System zu diesem Ergebnis kam und welche Daten verwendet wurden.',
+      'Richiedi anche le informazioni su come il sistema automatizzato ha elaborato i dati e quali fattori hanno portato al rifiuto.',
+    ]) {
+      expect(v(t, [s2]).verdict, t).toBe('verified');
+    }
+  });
+
+  it('next steps do not support automation claims when automation is not established', () => {
+    const ne = setup(NOT_ESTABLISHED);
+    expect(v("The organisation's AI system made this decision.", ['S1'], ne).verdict).toBe('blocked');
+  });
+
+  it('"where applicable" style conditions count as hedges', () => {
+    const human = setup(HUMAN, 'CH');
+    const q = human.sheet.facts.find((f) => f.kind === 'question' && /Article 25/.test(f.text))!.id;
+    const t = "4. Je traite cette lettre comme une demande d'accès au sens de l'article 25 de la LPD, incluant, le cas échéant, l'existence d'une décision individuelle automatisée.";
+    expect(v(t, [q], human).verdict).toBe('verified');
+  });
+
+  it('uncited statements that the facts do not say something are shown as non-claims, not blocked', () => {
+    for (const t of [
+      'The provided facts do not state whether Brightwater can change its decision if your income increases.',
+      "Les faits fournis ne précisent pas quelles données l'algorithme a utilisées.",
+      'Les faits fournis ne permettent pas de savoir si un logiciel a trié votre candidature.',
+      'Das Schreiben sagt nicht, ob ein Mensch entschieden hat.',
+      'La comunicazione non indica chi ha preso la decisione.',
+    ]) {
+      const r = v(t, []);
+      expect(r.verdict, t).toBe('verified');
+      expect(r.framing, t).toBe(true);
+    }
+    expect(verifyAll([{ text: 'The facts do not state whether they will reconsider.', cites: [] }], conf.sheet, conf.automation).summary.checked).toBe(0);
+  });
+
+  it('a non-claim still cannot carry a number, law or legal conclusion', () => {
+    expect(v('The facts do not state it, but you have 30 days to appeal.', []).verdict).toBe('blocked');
+    expect(v('The notice does not say so, but this decision is unlawful.', []).verdict).toBe('blocked');
+  });
+
+  it('genuine errors from the benchmark stay blocked', () => {
+    const ch = setup(DEMO_CASE.decisionText, 'CH');
+    const q6 = ch.sheet.facts.find((f) => f.kind === 'question' && /exclusively on automated processing/.test(f.text))!.id;
+    // Model added an article that is not in the cited request.
+    expect(v('6. Falls die Entscheidung ausschliesslich automatisiert war, informieren Sie mich gemäss Art. 22 DSGVO.', [q6], ch).verdict).toBe('blocked');
+    // Citation markup leaked into the text.
+    const leaked = v('You can ask the organisation to confirm whether a person reviewed the decision.\ncites: [S1, Q1]', ['S1']);
+    expect(leaked.reasons.join()).toMatch(/Malformed model output/);
+  });
+
+  it('flags output written in a different language from the one requested', async () => {
+    const content = JSON.stringify({
+      sentences: [
+        { text: 'I am writing regarding the decision to reject my loan application.', cites: ['D2'] },
+        { text: 'Please confirm whether a person reviewed or made the final decision.', cites: ['Q1'] },
+      ],
+    });
+    const out = await generateGrounded({ client: fakeClient(content), task: 'letter', language: 'fr', ...conf, ruleBasedLetter: conf.letter });
+    expect(out.languageMismatch).toBe('en');
+    const ok = await generateGrounded({ client: fakeClient(content), task: 'letter', language: 'en', ...conf, ruleBasedLetter: conf.letter });
+    expect(ok.languageMismatch).toBeUndefined();
   });
 });
 

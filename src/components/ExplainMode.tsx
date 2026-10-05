@@ -53,7 +53,7 @@ export function ExplainMode(props: ExplainModeProps) {
       const output = await generateGrounded({
         client: props.apertusClient,
         task: 'answer',
-        language: detectLanguage(query),
+        language: detectLanguage(query, props.defaultLanguage),
         question: query,
         sheet,
         extracted,

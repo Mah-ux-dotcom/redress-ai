@@ -55,7 +55,9 @@ export function automationSupportIds(sheet: FactSheet, automation: AutomationAna
     // The status itself, and the rule-based letter questions — which REDRESS only
     // phrases this way when the evidence shows automation — may support the claim.
     ids.add('D8');
-    for (const f of sheet.facts) if (f.kind === 'question') ids.add(f.id);
+    // REDRESS's own next steps (S*) and letter requests (Q*) are only phrased
+    // in terms of an automated system when the evidence shows one.
+    for (const f of sheet.facts) if (f.kind === 'question' || f.kind === 'step') ids.add(f.id);
   }
   return ids;
 }

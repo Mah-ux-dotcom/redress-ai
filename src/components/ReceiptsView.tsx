@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ShieldCheck, ShieldX, Copy, Check, Info, AlertTriangle } from 'lucide-react';
 import type { FactSheet, GroundedOutput, ReceiptSentence } from '@/apertus/types';
+import { LANGUAGES } from '@/apertus/language';
 
 interface ReceiptsViewProps {
   output: GroundedOutput;
@@ -83,6 +84,16 @@ export function ReceiptsView({ output, sheet, rawText }: ReceiptsViewProps) {
         <div className="flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 p-3 text-xs text-warning-700" data-testid="receipts-fallback">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{output.fallbackReason}</span>
+        </div>
+      )}
+
+      {output.languageMismatch && (
+        <div className="flex items-start gap-2 rounded-lg border border-warning-200 bg-warning-50 p-3 text-xs text-warning-700" data-testid="receipts-language-warning">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            You asked for {LANGUAGES[output.language].label}, but the model appears to have written in{' '}
+            {LANGUAGES[output.languageMismatch].label}. Try again, or choose that language.
+          </span>
         </div>
       )}
 
