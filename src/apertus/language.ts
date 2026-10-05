@@ -151,7 +151,7 @@ export const SOLELY_ASSERTION: RegExp =
  * A sentence containing one of these is not treated as a factual assertion.
  */
 export const HEDGE_MARKERS: RegExp =
-  /\?|\bwhere applicable\b|\bif applicable\b|\bif so\b|\ble cas échéant\b|\bsi tel est le cas\b|\bgegebenenfalls\b|\bggf\.|\bfalls\b|\bse del caso\b|\bove applicabile\b|\bin tal caso\b|\beventualmente\b|\bwhether\b|\bif\b|\bmay\b|\bmight\b|\bnot (?:established|stated|say|said|show|prove)|\bdoes not\b|\bdo not know\b|\bunclear\b|\bask\b|\bob\b|\bfalls\b|\bnicht\b|\bweder\b|\bkein(?:e|en)?\b|\bkönnte\b|\bunklar\b|\bfragen\b|\bsi\b|\bpas\b|\bne\b|\bni\b|\bn['’]|\bné\b|\bpeut-être\b|\bpourrait\b|\bdemander\b|\bse\b|\bnon\b|\bpotrebbe\b|\bchiedere\b|\bforse\b/i;
+  /\?|\bwhere applicable\b|\bif applicable\b|\bif so\b|\ble cas échéant\b|\bsi tel est le cas\b|\bgegebenenfalls\b|\bggf\.|\bfalls\b|\bwenn\b|\bsofern\b|\bsoweit\b|\bse del caso\b|\bove applicabile\b|\bin tal caso\b|\beventualmente\b|\bwhether\b|\bif\b|\bmay\b|\bmight\b|\bnot (?:established|stated|say|said|show|prove)|\bdoes not\b|\bdo not know\b|\bunclear\b|\bask\b|\bob\b|\bfalls\b|\bnicht\b|\bweder\b|\bkein(?:e|en)?\b|\bkönnte\b|\bunklar\b|\bfragen\b|\bsi\b|\bpas\b|\bne\b|\bni\b|\bn['’]|\bné\b|\bpeut-être\b|\bpourrait\b|\bdemander\b|\bse\b|\bnon\b|\bpotrebbe\b|\bchiedere\b|\bforse\b/i;
 
 /**
  * Statements that the facts do NOT say something ("the notice does not state
@@ -160,7 +160,7 @@ export const HEDGE_MARKERS: RegExp =
  */
 const NON_CLAIM: RegExp[] = [
   /\b(?:do|does|did)\s+not\s+(?:say|state|show|establish|prove|specify|mention|indicate|explain|cover|tell)\b|\bnot\s+(?:stated|established|specified|mentioned|known|clear)\b|\bthere is no information\b/i,
-  /\b(?:sagt|sagen|nennt|nennen|zeigt|zeigen|belegt|belegen|beweist|beweisen|erwähnt|erwähnen|geht)\b.{0,80}\b(?:nicht|keine?n?)\b|\bnicht\s+(?:bekannt|angegeben|ersichtlich|klar|festgestellt|belegt)\b/i,
+  /\b(?:sagt|sagen|nennt|nennen|zeigt|zeigen|belegt|belegen|beweist|beweisen|erwähnt|erwähnen|geht|lässt|lassen|ergibt|ergeben)\b.{0,80}\b(?:nicht|keine?n?)\b|\bnicht\s+(?:bekannt|angegeben|ersichtlich|klar|festgestellt|belegt)\b/i,
   /\b(?:ne|n['’])\s*(?:\S+\s+){0,3}?(?:dit|disent|précise\w*|prouve\w*|permet\w*|indique\w*|mentionne\w*|montre\w*|établi\w*|sait|savons)\b.{0,40}\b(?:pas|ni)\b/i,
   /\bnon\b.{0,40}\b(?:dic\w+|indic\w+|precis\w+|dimostr\w+|stabilisc\w+|menzion\w+|specific\w+|prov\w+|permett\w+|chiar\w+)/i,
 ];

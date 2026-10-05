@@ -337,6 +337,16 @@ describe('Benchmark findings: checker false positives fixed, genuine errors stil
     expect(v('Your decision was made by an automated system, so Art. 21 FADP applies.', [art21], ne).verdict).toBe('blocked');
   });
 
+  it('German conditionals and "lässt nicht erkennen" are recognised (benchmark run 3)', () => {
+    const ne = setup(NOT_ESTABLISHED, 'CH');
+    const art21 = ne.sheet.facts.find((f) => f.kind === 'law' && f.text.startsWith('FADP Art. 21'))!.id;
+    const conditional =
+      'Gemäß Art.\u202f21 FADP können Sie eine Überprüfung durch eine natürliche Person verlangen, wenn die Entscheidung ausschliesslich auf automatisierter Verarbeitung beruht.';
+    expect(v(conditional, [art21], ne).verdict).toBe('verified');
+    const absence = 'Die Faktenlage lässt nicht eindeutig erkennen, ob ein Mensch die Entscheidung überprüft hat.';
+    expect(v(absence, [], ne)).toMatchObject({ verdict: 'verified', framing: true });
+  });
+
   it('genuine errors from the benchmark stay blocked', () => {
     const ch = setup(DEMO_CASE.decisionText, 'CH');
     const q6 = ch.sheet.facts.find((f) => f.kind === 'question' && /exclusively on automated processing/.test(f.text))!.id;

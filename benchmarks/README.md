@@ -62,6 +62,44 @@ Results go to `benchmarks/results/`:
 - `<timestamp>.json`: every case, task, sentence, verdict, Receipts reason and latency. When a task falls back, the model's raw response is included so the failure can be inspected.
 - `<timestamp>-summary.md` and `latest-summary.md`: the tables.
 
+## Results (final run, 5 October 2026)
+
+20 notices × 2 runs per model, same inputs and prompts, on the Hack Apertus CSCS endpoint. Full tables: [`results/latest-summary.md`](results/latest-summary.md). Every sentence and verdict: `benchmarks/results/2026-10-05-12-26.json`. Methodology and limitations: this file.
+
+| Automated measurement | Apertus 1.5 8B | Apertus 1.5 70B |
+|---|---|---|
+| Task success (output usable, no fallback) | 94.2% | **100%** |
+| JSON valid as returned | 38.7% | **99.3%** |
+| Claims verified by Receipts | 91.6% (712 claims) | **97.0%** (860 claims) |
+| Fabricated citations | 1 | **0** |
+| Explanation completeness (4 required parts) | 80.1% | **99.4%** |
+| Letter coverage (REDRESS requests included) | 69.3% | **100%** |
+| Non-English notices translated | 66.7% | **100%** |
+| Automation status correct after translation | 73.3% | **100%** |
+| Output in the requested language | **100%** | 96.7% |
+| Median latency per task | **2.5 s** | 6.4 s |
+
+What this shows:
+- **70B is the right default for REDRESS.** It translated every non-English notice correctly, almost always returned valid structured output, and covered every required part of explanations and letters.
+- **8B is about 2.5 times faster, but fragile.** Only 39% of its outputs were valid JSON as returned; most were usable only after a narrow, documented repair. It could not translate 4 of the 15 non-English notices (the same 4 in both runs), and each of those notices was then mis-classified as "not established".
+- **8B did better on language.** 70B wrote 4 of its 10 French letters in English (all its other outputs were in the requested language). REDRESS now warns the user when this happens.
+- **Receipts mattered for both models.** For 8B it mostly blocked laws and numbers that weren't in the sources, malformed output and one fabricated citation. For 70B it mostly blocked malformed output (citation markup written into the sentence), quotes that weren't verbatim, and unsupported automation or "solely automated" claims.
+- **Run-to-run variation was small** for the overall verified rate (8B 91.2% / 91.9%; 70B 96.9% / 97.0%). It is larger for free-form answers, which have few claims per run.
+
+**How the benchmark improved REDRESS.** The first run (`2026-10-05-12-11`, kept unchanged) exposed a real translation bug and several Receipts false positives, for example inline fact IDs being read as numbers and honest "the notice does not say…" sentences being blocked. These were fixed with regression tests. The run was then repeated twice, and all three result files are in `benchmarks/results/`. After the final run, two more German hedge patterns ("wenn", "lässt nicht erkennen") were fixed. They affected 3 of the 70B's 86 free-form answer claims, and the numbers above do not include that fix.
+
+**Not measured:** human ratings of fluency, tone and legal appropriateness. See the limitations in `benchmarks/README.md`.
+
+### Run history
+
+| Run | Results | Checker state |
+|---|---|---|
+| 1 | `results/2026-10-05-12-11.*` | Original Receipts. Revealed a translation-alignment bug and Receipts false positives (inline fact IDs read as numbers; requests mentioning the automated system; "where applicable" hedges; uncited "the notice does not say…" sentences) |
+| 2 | `results/2026-10-05-12-19.*` | After those fixes. Revealed a second JSON-error variant (70B) and law-scope statements ("for automated decisions that…") flagged as automation claims |
+| 3 (final) | `results/2026-10-05-12-26.*` | After those fixes |
+
+Every fix is covered by regression tests in `src/__tests__/hardening.test.ts` that use the sentences found in these runs. Fixes that loosen a check are paired with tests showing the genuine errors are still blocked.
+
 ## Limitations
 
 - **Small sample.** 20 cases × 2 runs is enough to show clear differences, not small ones. Run-to-run variation is visible in the results; generation uses temperature 0.2.
@@ -70,4 +108,5 @@ Results go to `benchmarks/results/`:
 - **Language detection is heuristic**, and it is not reliable on very short outputs.
 - **The repair helps weaker JSON output.** It is applied identically to both models and reported separately ("JSON valid as returned"), so its effect is visible.
 - **One endpoint, one point in time.** Latency depends on the CSCS endpoint's load when the benchmark ran.
+- **Spot checks, not human evaluation.** While analysing the runs, the AI assistant that built REDRESS read samples of the blocked and verified sentences. It found, for example, that 70B once renamed "Assurances Exemple SA" to "Example Insurance SA" (Receipts does not check names). This is not independent human evaluation.
 - **No human evaluation yet.** Fluency, tone and legal appropriateness of the outputs have not been rated by a person. The raw results file contains every sentence for anyone who wants to do this.

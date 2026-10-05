@@ -57,7 +57,20 @@ Every reference states when it applies, its limits, and whether human review is 
 - **Live checks** run against real Apertus 1.5.
 
 ## Benchmark (Apertus 1.5 8B vs 70B)
-DEVPOST_BENCHMARK_PLACEHOLDER
+We built a reproducible benchmark: 20 synthetic notices (5 per language), the exact REDRESS pipeline, the same inputs for both models, and 2 runs each, on the CSCS endpoint. Final run:
+
+| | Apertus 1.5 8B | Apertus 1.5 70B |
+|---|---|---|
+| Task success | 94.2% | 100% |
+| JSON valid as returned | 38.7% | 99.3% |
+| Claims verified by Receipts | 91.6% | 97.0% |
+| Non-English notices translated | 66.7% | 100% |
+| Automation status correct after translation | 73.3% | 100% |
+| Letter coverage | 69.3% | 100% |
+| Output in requested language | 100% | 96.7% |
+| Median latency per task | 2.5 s | 6.4 s |
+
+70B is our default. 8B is about 2.5 times faster but fragile on structured output and translation. 70B wrote 4 of its 10 French letters in English, and REDRESS now warns when that happens. The benchmark also found bugs in REDRESS itself: we fixed them and kept every run's results in the repository. Full methodology and limitations: `benchmarks/README.md`.
 
 ## Challenges
 - **Small-model JSON.** 8B often returned slightly malformed JSON. We added one narrow, documented repair and report separately how often each model needed it.
