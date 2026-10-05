@@ -54,20 +54,14 @@ Set `VITE_APERTUS_MODE` (see `.env.example`):
 
 ## Plugging in the real Apertus endpoint
 
-The proxy (`server/apertus-proxy.mjs`) works with any **OpenAI-compatible** chat-completions endpoint: a hosted endpoint, Hugging Face, or a self-hosted vLLM or Ollama server. The API key stays on the server; the browser only calls `/api/apertus/*`.
+The proxy (`server/apertus-proxy.mjs`) works with any **OpenAI-compatible** chat-completions endpoint. It defaults to the Hack Apertus CSCS endpoint, `https://api.inference.cscs.ch/v1`. The API key stays on the server; the browser only calls `/api/apertus/*`.
 
-1. Copy `.env.example` to `.env` (never commit `.env`) and fill in:
-   ```
-   VITE_APERTUS_MODE=apertus
-   APERTUS_BASE_URL=https://<endpoint>/v1
-   APERTUS_API_KEY=<key>
-   APERTUS_MODEL=<model name, e.g. the 8B or 70B Apertus model id>
-   ```
-2. Run the proxy: `npm run proxy`
-3. Run the app: `npm run dev` (Vite forwards `/api` to the proxy)
-4. Check: `curl localhost:5173/api/apertus/health` should report `"configured": true`.
+1. Provide the key as `APERTUS_API_KEY`, either in `.env` (never commit it) or as an environment variable. If your environment injects the credential for `api.inference.cscs.ch` itself (for example a Claude Code cloud environment "Bearer" credential), leave the variable unset.
+2. Optional: set `APERTUS_MODEL` to pin a model, for example the 8B or 70B id. If it is unset, the proxy reads the endpoint's `/models` list and picks an Apertus instruct model.
+3. Set `VITE_APERTUS_MODE=apertus`, then run `npm run proxy` and `npm run dev` (Vite forwards `/api` to the proxy).
+4. Check: `curl localhost:8787/api/apertus/health` should report `"configured": true` and a model name.
 
-Switching between the 8B and 70B models, or to a self-hosted deployment, only changes `APERTUS_BASE_URL` and `APERTUS_MODEL`.
+Behind an HTTPS proxy, the proxy relaunches itself with `NODE_USE_ENV_PROXY=1` so that Node's built-in fetch uses it (Node >= 22.21).
 
 ## Code map
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import http from 'node:http';
-import { createHandler } from './apertus-proxy.mjs';
+import { createHandler, pickApertusModel } from './apertus-proxy.mjs';
 
 async function withServer(handler, fn) {
   const server = http.createServer(handler);
@@ -51,5 +51,38 @@ describe('Apertus proxy', () => {
       const text = await res.text();
       expect(text).not.toMatch(/secret-key|1234/);
     });
+  });
+
+  it('discovers an Apertus model from /models when none is configured', async () => {
+    const fetchImpl = vi.fn(async (url) =>
+      String(url).endsWith('/models')
+        ? new Response(JSON.stringify({ data: [{ id: 'other-model' }, { id: 'swiss-ai/Apertus-8B-Instruct' }] }))
+        : new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] })),
+    );
+    const handler = createHandler({ baseUrl: 'https://host.example/v1', apiKey: 'k', fetchImpl });
+    await withServer(handler, async (base) => {
+      expect(await (await fetch(`${base}/api/apertus/health`)).json()).toEqual({ configured: true, model: 'swiss-ai/Apertus-8B-Instruct' });
+      const res = await chat(base, { messages: [{ role: 'user', content: 'x' }] });
+      expect(await res.json()).toEqual({ content: 'ok', model: 'swiss-ai/Apertus-8B-Instruct' });
+    });
+    const chatCall = fetchImpl.mock.calls.find(([u]) => String(u).endsWith('/chat/completions'));
+    expect(JSON.parse(chatCall[1].body).model).toBe('swiss-ai/Apertus-8B-Instruct');
+    expect(fetchImpl.mock.calls.filter(([u]) => String(u).endsWith('/models'))).toHaveLength(1); // cached
+  });
+
+  it('reports an unreachable endpoint on health without leaking details', async () => {
+    const fetchImpl = vi.fn(async () => new Response('denied for key secret-key', { status: 401 }));
+    await withServer(createHandler({ baseUrl: 'https://host.example/v1', apiKey: 'secret-key', fetchImpl }), async (base) => {
+      const body = await (await fetch(`${base}/api/apertus/health`)).json();
+      expect(body.model).toBeNull();
+      expect(body.error).toMatch(/HTTP 401/);
+      expect(JSON.stringify(body)).not.toMatch(/secret-key/);
+    });
+  });
+
+  it('prefers Apertus instruct models', () => {
+    expect(pickApertusModel(['a', 'swiss-ai/Apertus-70B', 'swiss-ai/Apertus-70B-Instruct'])).toBe('swiss-ai/Apertus-70B-Instruct');
+    expect(pickApertusModel(['x', 'y'])).toBe('x');
+    expect(pickApertusModel([])).toBeNull();
   });
 });
