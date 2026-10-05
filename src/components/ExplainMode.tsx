@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send, BookOpen, AlertCircle, RefreshCw, ChevronRight } from 'lucide-react';
 import type { AutomationAnalysis, ExplainResponse, ExtractedData, JurisdictionCode } from '@/types';
-import { explain, SUGGESTED_QUESTIONS } from '@/ai/explainEngine';
+import { explainWithApertus, SUGGESTED_QUESTIONS } from '@/ai/explainEngine';
 
 interface ExplainModeProps {
   extracted: ExtractedData;
@@ -15,17 +15,29 @@ export function ExplainMode({ extracted, automation, jurisdiction, onRestart }: 
   const [response, setResponse] = useState<ExplainResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const handleAsk = (q?: string) => {
+  const pending = useRef<AbortController | null>(null);
+
+  useEffect(() => () => pending.current?.abort(), []);
+
+  const handleAsk = async (q?: string) => {
     const query = q ?? question;
     if (!query.trim()) return;
+    pending.current?.abort();
+    const controller = new AbortController();
+    pending.current = controller;
     setLoading(true);
-    // Simulate brief processing for UX
-    setTimeout(() => {
-      const result = explain({ question: query, extracted, automation, jurisdiction });
-      setResponse(result);
-      setLoading(false);
-      if (q) setQuestion(q);
-    }, 300);
+    if (q) setQuestion(q);
+    try {
+      const result = await explainWithApertus({ question: query, extracted, automation, jurisdiction }, controller.signal);
+      if (!controller.signal.aborted) setResponse(result);
+    } catch {
+      // Superseded by a newer question or the view unmounted.
+    } finally {
+      if (pending.current === controller) {
+        pending.current = null;
+        setLoading(false);
+      }
+    }
   };
 
   return (
@@ -34,7 +46,7 @@ export function ExplainMode({ extracted, automation, jurisdiction, onRestart }: 
         <div className="section-title mb-1">Explain It To Me</div>
         <h2 className="text-lg font-bold text-ink-900">Ask a question about your decision</h2>
         <p className="text-sm text-ink-500">
-          REDRESS answers only from your decision, the extracted data, and the selected jurisdiction. It does not invent law or facts.
+          REDRESS answers only from your decision, the extracted data, and the selected jurisdiction. It does not invent law or facts. Questions outside the suggested topics are answered by Apertus, an open Swiss AI model, from the same material.
         </p>
       </div>
 
