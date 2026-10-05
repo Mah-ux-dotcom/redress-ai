@@ -63,6 +63,23 @@ The proxy (`server/apertus-proxy.mjs`) works with any **OpenAI-compatible** chat
 
 Behind an HTTPS proxy, the proxy relaunches itself with `NODE_USE_ENV_PROXY=1` so that Node's built-in fetch uses it (Node >= 22.21).
 
+## Live check against real Apertus
+
+With the proxy running (`npm run proxy`), `npm run test:live` sends six real cases through the full pipeline (translation, generation, Receipts) and prints every sentence with its verdict. It is skipped in the normal test run.
+
+First live results with `swiss-ai/Apertus-v1.5-70B` on the CSCS endpoint (October 2026):
+
+| Case | Task | Result |
+|---|---|---|
+| NovaCredit (EN) | explain in English | 9/9 verified |
+| NovaCredit (EN) | letter in German | 12/12 verified |
+| Job rejection, automation not established | explain in French | 11/11 verified |
+| NovaCredit Schweiz (DE notice, translated) | explain in English | 9/9 verified |
+| NovaCredit Schweiz (DE notice, translated) | letter in German | 8 verified, 4 blocked: the model cited fact IDs that do not exist |
+| Insurance, human decision | explain in Italian | 11/11 verified |
+
+Typical latency is 7–17 seconds per case, including translation where needed. Two issues found live were fixed: a malformed greeting line broke the whole JSON response (valid sentences are now salvaged and the broken one dropped), and lines the model mislabelled as "framing" while citing sources are now checked as content.
+
 ## Code map
 
 | File | Role |

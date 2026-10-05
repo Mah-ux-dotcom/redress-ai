@@ -14,7 +14,7 @@ import type { AutomationAnalysis, ExtractedData, JurisdictionCode, StatusSignal 
 import { analyzeAutomation, extractDecision } from '@/lib/analyze';
 import { explainFourPart } from '@/ai/explainEngine';
 import { HUMAN_CUES, detectLanguage, hasAutomationCue } from './language';
-import { buildGenerationMessages, buildTranslationMessages, parseJsonObject, type GenerationTask } from './prompts';
+import { buildGenerationMessages, buildTranslationMessages, parseSentences, type GenerationTask } from './prompts';
 import { verifyAll } from './receipts';
 import type {
   AlignedSentence,
@@ -37,20 +37,19 @@ export async function translateNotice(client: ApertusClient, rawText: string): P
   if (sourceLanguage === 'en') return null;
 
   const content = await client.complete(buildTranslationMessages(rawText, sourceLanguage), { temperature: 0, maxTokens: 3000 });
-  const parsed = parseJsonObject(content) as { sentences?: unknown };
-  if (!Array.isArray(parsed.sentences)) throw new Error('Translation response has no sentences');
+  const { items } = parseSentences(content);
 
   const original = squash(rawText);
   const sentences: AlignedSentence[] = [];
   let dropped = 0;
-  for (const item of parsed.sentences as { source?: unknown; english?: unknown }[]) {
+  for (const item of items as { source?: unknown; english?: unknown }[]) {
     const source = typeof item?.source === 'string' ? item.source.trim() : '';
     const english = typeof item?.english === 'string' ? item.english.trim() : '';
     // Only keep sentences the model copied faithfully from the original notice.
     if (source && english && original.includes(squash(source))) sentences.push({ source, english });
     else dropped++;
   }
-  if (sentences.length === 0) throw new Error('Translation did not match the original notice');
+  if (sentences.length === 0) throw new Error('No usable translation in the model response');
 
   // Rebuild the notice in English, preserving its line structure.
   let englishText = rawText;
@@ -125,10 +124,9 @@ export interface GenerateParams {
 }
 
 function parseDraft(content: string): DraftSentence[] {
-  const parsed = parseJsonObject(content) as { sentences?: unknown };
-  if (!Array.isArray(parsed.sentences)) throw new Error('Response has no sentences');
+  const { items } = parseSentences(content);
   const out: DraftSentence[] = [];
-  for (const s of parsed.sentences as { text?: unknown; cites?: unknown; framing?: unknown }[]) {
+  for (const s of items as { text?: unknown; cites?: unknown; framing?: unknown }[]) {
     if (typeof s?.text !== 'string' || !s.text.trim()) continue;
     out.push({
       text: s.text.trim(),

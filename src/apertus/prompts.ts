@@ -42,7 +42,7 @@ export function buildGenerationMessages(
   const instruction =
     task === 'explain'
       ? `Explain this decision to the person who received it, in ${lang}. Cover, in order: what happened; what evidence there is about automation (quote it); what that evidence does NOT prove; what they can do next. 8 to 14 short sentences.`
-      : `Write a formal, polite request-for-review letter from ${extra.userName || 'the person'} to the organisation, in ${lang}. Include a greeting, the decision it concerns, the quoted evidence if any, then each Q* question as its own numbered sentence, and a sign-off. Mark greeting and sign-off lines with "framing": true and empty "cites".`;
+      : `Write a formal, polite request-for-review letter from ${extra.userName || 'the person'} to the organisation, in ${lang}. Include a greeting, the decision it concerns, the quoted evidence if any, then each Q* question as its own numbered sentence, and a sign-off. Greeting and sign-off lines have empty "cites" and an extra field "framing": true, for example {"text":"Dear Sir or Madam,","cites":[],"framing":true}.`;
 
   return [
     {
@@ -51,7 +51,7 @@ export function buildGenerationMessages(
     },
     {
       role: 'user',
-      content: `TASK: ${task}\nLANGUAGE: ${language}\n${instruction}\n\n${factsBlock(sheet)}\n\nReturn exactly this JSON shape:\n{"sentences":[{"text":"...","cites":["D1","E1"]}]}`,
+      content: `TASK: ${task}\nLANGUAGE: ${language}\n${instruction}\n\n${factsBlock(sheet)}\n\nReturn exactly this JSON shape (valid JSON; escape any double quotes inside text):\n{"sentences":[{"text":"...","cites":["D1","E1"]}]}`,
     },
   ];
 }
@@ -68,6 +68,35 @@ export function buildTranslationMessages(notice: string, sourceLanguage: Languag
       content: `TASK: translate\nSOURCE LANGUAGE: ${sourceLanguage}\nSplit the notice into its lines/sentences. For each, copy the original text EXACTLY into "source" and give the English translation in "english".\n\n${NOTICE_START}\n${notice}\n${NOTICE_END}\n\nReturn exactly this JSON shape:\n{"sentences":[{"source":"...","english":"..."}]}`,
     },
   ];
+}
+
+/**
+ * Recover the individually valid flat objects inside an array the model wrote,
+ * when the response as a whole is not valid JSON. Malformed items are dropped —
+ * never repaired — so nothing unparsed can reach the user.
+ */
+export function salvageObjects(content: string): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  for (const m of content.matchAll(/\{[^{}]*\}/g)) {
+    try {
+      const obj = JSON.parse(m[0]);
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) out.push(obj);
+    } catch {
+      // drop malformed item
+    }
+  }
+  return out;
+}
+
+/** The "sentences" array from a model response, salvaging valid items if the JSON is broken. */
+export function parseSentences(content: string): { items: unknown[]; salvaged: boolean } {
+  try {
+    const parsed = parseJsonObject(content) as { sentences?: unknown };
+    if (Array.isArray(parsed.sentences)) return { items: parsed.sentences, salvaged: false };
+  } catch {
+    // fall through to salvage
+  }
+  return { items: salvageObjects(content), salvaged: true };
 }
 
 /** Extract the first JSON object from a model response (tolerates code fences / chatter). */

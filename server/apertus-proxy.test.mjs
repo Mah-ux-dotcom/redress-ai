@@ -80,8 +80,16 @@ describe('Apertus proxy', () => {
     });
   });
 
-  it('prefers Apertus instruct models', () => {
-    expect(pickApertusModel(['a', 'swiss-ai/Apertus-70B', 'swiss-ai/Apertus-70B-Instruct'])).toBe('swiss-ai/Apertus-70B-Instruct');
+  it('prefers Apertus 1.5, non-thinking, 70B', () => {
+    const cscs = [
+      'swiss-ai/Apertus-70B-Instruct-2509',
+      'swiss-ai/Apertus-8B-Instruct-2509',
+      'swiss-ai/Apertus-v1.5-70B',
+      'swiss-ai/Apertus-v1.5-70B-thinking',
+      'swiss-ai/Apertus-v1.5-8B',
+      'google/gemma-4-31B-it',
+    ];
+    expect(pickApertusModel(cscs)).toBe('swiss-ai/Apertus-v1.5-70B');
     expect(pickApertusModel(['x', 'y'])).toBe('x');
     expect(pickApertusModel([])).toBeNull();
   });

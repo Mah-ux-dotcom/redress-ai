@@ -102,7 +102,7 @@ export const SOLELY_ASSERTION: RegExp =
  * A sentence containing one of these is not treated as a factual assertion.
  */
 export const HEDGE_MARKERS: RegExp =
-  /\?|\bwhether\b|\bif\b|\bmay\b|\bmight\b|\bnot (?:established|stated|say|said|show|prove)|\bdoes not\b|\bdo not know\b|\bunclear\b|\bask\b|\bob\b|\bfalls\b|\bnicht\b|\bkönnte\b|\bunklar\b|\bfragen\b|\bsi\b|\bpas\b|\bpeut-être\b|\bpourrait\b|\bdemander\b|\bse\b|\bnon\b|\bpotrebbe\b|\bchiedere\b|\bforse\b/i;
+  /\?|\bwhether\b|\bif\b|\bmay\b|\bmight\b|\bnot (?:established|stated|say|said|show|prove)|\bdoes not\b|\bdo not know\b|\bunclear\b|\bask\b|\bob\b|\bfalls\b|\bnicht\b|\bweder\b|\bkein(?:e|en)?\b|\bkönnte\b|\bunklar\b|\bfragen\b|\bsi\b|\bpas\b|\bne\b|\bni\b|\bn['’]|\bné\b|\bpeut-être\b|\bpourrait\b|\bdemander\b|\bse\b|\bnon\b|\bpotrebbe\b|\bchiedere\b|\bforse\b/i;
 
 /** Legal conclusions, guarantees and certainty REDRESS never states as fact. */
 export const OVERCLAIM: RegExp =

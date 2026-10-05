@@ -68,7 +68,10 @@ export function verifySentence(
 
   // 1. Citations
   if (unknown.length) reasons.push(`Cites sources that do not exist: ${unknown.join(', ')}`);
-  if (sentence.framing) {
+  // A line counts as framing (greeting / sign-off) only if it cites nothing;
+  // anything citing sources is checked as content, whatever the model labelled it.
+  const framing = sentence.framing === true && cited.length === 0;
+  if (framing) {
     if (text.length > 140) reasons.push('Too long for a greeting or sign-off line');
   } else if (known.length === 0) {
     reasons.push('No source cited — the sentence is not backed by the evidence');
@@ -115,7 +118,7 @@ export function verifySentence(
   const over = text.match(OVERCLAIM);
   if (over) reasons.push(`States a legal conclusion or guarantee ("${over[0].trim()}") — REDRESS never does this`);
 
-  return { ...sentence, text, cites: known, verdict: reasons.length ? 'blocked' : 'verified', reasons };
+  return { ...sentence, framing, text, cites: known, verdict: reasons.length ? 'blocked' : 'verified', reasons };
 }
 
 export function verifyAll(

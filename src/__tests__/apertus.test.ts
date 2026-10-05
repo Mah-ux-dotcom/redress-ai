@@ -84,6 +84,21 @@ describe('Receipts verifier — each check', () => {
       expect(v(t, ['D8']).reasons.join(), t).toMatch(/legal conclusion or guarantee/);
     }
   });
+  it('a line that cites sources is checked as content even if the model calls it framing (seen live)', () => {
+    const long = '1. Please confirm whether this decision was made solely by the automated system you refer to, or whether a person reviewed or made the final decision.';
+    expect(v(long, ['Q1'], true).verdict).toBe('verified');
+    expect(v('Please reply within 7 days.', ['Q1'], true).reasons.join()).toMatch(/numbers/);
+  });
+  it('French, German and Italian negations count as hedges (seen live)', () => {
+    const ne = setup(NOT_ESTABLISHED);
+    for (const t of [
+      "Le silence sur l'automatisation ne prouve ni son utilisation ni son absence.",
+      'Das Schreiben belegt weder eine Automatisierung noch das Gegenteil.',
+      'La comunicazione non indica né un sistema automatizzato né una persona.',
+    ]) {
+      expect(verifySentence({ text: t, cites: ['G1'] }, ne.sheet, ne.automation).verdict, t).toBe('verified');
+    }
+  });
   it('framing lines need no citation but cannot carry claims', () => {
     expect(v('Dear Sir or Madam,', [], true).verdict).toBe('verified');
     expect(v('Please reply within 7 days.', [], true).reasons.join()).toMatch(/numbers/);
@@ -225,6 +240,23 @@ describe('Fallback to rule-based REDRESS', () => {
     const out = await generateGrounded({ client: fakeClient('Sure! Here is your letter…'), task: 'letter', language: 'fr', ...ctx, ruleBasedLetter: ctx.letter });
     expect(out.producedBy).toBe('rule_based_fallback');
     expect(out.sentences.map((s) => s.text).join('\n')).toContain('Request for Review of Decision');
+  });
+
+  it('salvages the valid sentences when one item breaks the JSON (seen live from Apertus)', async () => {
+    const broken = `{"sentences":[
+      {"text": "framing": true, "cites": []},
+      {"text": "Sehr geehrte Damen und Herren", "cites": [], "framing": true},
+      {"text": "NovaCredit Loan Services hat meinen Antrag abgelehnt.", "cites": ["D1", "D2"]},
+      {"text": "Dieser Entscheid ist rechtswidrig.", "cites": ["D8"]}
+    ]}`;
+    const out = await generateGrounded({ client: fakeClient(broken), task: 'letter', language: 'de', ...ctx, ruleBasedLetter: ctx.letter });
+    expect(out.producedBy).toBe('apertus');
+    expect(out.sentences.map((s) => s.text)).toEqual([
+      'Sehr geehrte Damen und Herren',
+      'NovaCredit Loan Services hat meinen Antrag abgelehnt.',
+      'Dieser Entscheid ist rechtswidrig.',
+    ]);
+    expect(out.summary).toEqual({ checked: 3, verified: 2, blocked: 1 });
   });
 
   it('falls back when language-model features are off', async () => {

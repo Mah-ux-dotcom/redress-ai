@@ -57,11 +57,17 @@ function validMessages(messages) {
   );
 }
 
-/** Choose an Apertus model from an OpenAI-style /models list (instruct variants first). */
+/**
+ * Choose an Apertus model from an OpenAI-style /models list. Preference:
+ * Apertus 1.5 over older releases, non-"thinking" variants (faster, plain
+ * answers), 70B over 8B. Set APERTUS_MODEL to override.
+ */
 export function pickApertusModel(ids) {
   const apertus = ids.filter((id) => /apertus/i.test(id));
   const pool = apertus.length ? apertus : ids;
-  return pool.find((id) => /instruct/i.test(id)) ?? pool[0] ?? null;
+  const score = (id) =>
+    (/v1\.5|1\.5/i.test(id) ? 4 : 0) + (/thinking/i.test(id) ? 0 : 2) + (/70b/i.test(id) ? 1 : 0);
+  return [...pool].sort((a, b) => score(b) - score(a))[0] ?? null;
 }
 
 /** Build the request handler. Exported for tests. */

@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "test": "vitest run",
-    "proxy": "node server/apertus-proxy.mjs"
+    "proxy": "node server/apertus-proxy.mjs",
+    "test:live": "LIVE_APERTUS=1 vitest run scripts/live-receipts.test.ts --dir ."
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
