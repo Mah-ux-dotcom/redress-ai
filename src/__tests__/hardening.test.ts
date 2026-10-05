@@ -317,6 +317,26 @@ describe('Benchmark findings: checker false positives fixed, genuine errors stil
     expect(v('The notice does not say so, but this decision is unlawful.', []).verdict).toBe('blocked');
   });
 
+  it('repairs the unclosed-text variant seen from the 70B model', () => {
+    const raw = '{"sentences":[{"text":"The decision was reviewed by their claims specialist team. cites":["D1","E1"]}]}';
+    const parsed = JSON.parse(repairJson(raw));
+    expect(parsed.sentences[0]).toEqual({ text: 'The decision was reviewed by their claims specialist team.', cites: ['D1', 'E1'] });
+  });
+
+  it('describing what a law covers is not a claim that this decision was automated', () => {
+    const ne = setup(NOT_ESTABLISHED, 'CH');
+    const art21 = ne.sheet.facts.find((f) => f.kind === 'law' && f.text.startsWith('FADP Art. 21'))!.id;
+    for (const t of [
+      'Gemäß Art. 21 FADP können Sie bei qualifizierten automatisierten Entscheidungen eine Überprüfung durch eine natürliche Person verlangen.',
+      'Selon la LPD, des droits spécifiques existent pour les décisions basées uniquement sur un traitement automatisé.',
+      'Under the FADP, there are rules for automated individual decisions that have legal effects.',
+    ]) {
+      expect(v(t, [art21], ne).verdict, t).toBe('verified');
+    }
+    // …but saying this decision was automated is still blocked when that is not established.
+    expect(v('Your decision was made by an automated system, so Art. 21 FADP applies.', [art21], ne).verdict).toBe('blocked');
+  });
+
   it('genuine errors from the benchmark stay blocked', () => {
     const ch = setup(DEMO_CASE.decisionText, 'CH');
     const q6 = ch.sheet.facts.find((f) => f.kind === 'question' && /exclusively on automated processing/.test(f.text))!.id;

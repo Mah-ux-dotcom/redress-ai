@@ -95,13 +95,15 @@ export function salvageObjects(content: string): Record<string, unknown>[] {
 }
 
 /**
- * One narrow, documented repair for a common small-model JSON error: a text
- * value that is not closed before the next key, written as `.\"cites":`,
- * `.\ncites":` or `.\ncites:` instead of `.","cites":`. Only that error family
+ * One narrow, documented repair for a common JSON error: a text value that is
+ * not closed before the next key, written as `.\"cites":`, `.\ncites":`,
+ * `.\ncites:` or `. cites":` instead of `.","cites":`. Only that error family
  * is changed (for the keys REDRESS uses); the result is still fully verified.
  */
 export function repairJson(content: string): string {
-  return content.replace(/\\[n"]\s*"?(cites|framing|english|source)"?\s*:/g, '","$1":');
+  return content
+    .replace(/\\[n"]\s*"?(cites|framing|english|source)"?\s*:/g, '","$1":')
+    .replace(/([^",{\s])\s+(cites|framing)":\s*(\[|true|false)/g, '$1","$2":$3');
 }
 
 export type ParseQuality = 'valid' | 'repaired' | 'salvaged';

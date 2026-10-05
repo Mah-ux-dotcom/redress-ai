@@ -105,8 +105,20 @@ const AUTOMATION_ACRONYMS = /(?:^|[^A-Za-zÀ-ÿ])(?:AI|A\.I\.|KI|IA)(?=$|[^A-Za-
 /** Neutral phrases that name the classification itself rather than claim automation was used. */
 const STATUS_PHRASES = /automation status|automatisierungsstatus|statut d['’]automatisation|stato di automazione/gi;
 
+/**
+ * General statements about what a law covers ("for automated decisions that…")
+ * describe a category of decisions; they do not claim this decision was automated.
+ */
+const LAW_SCOPE_PHRASES =
+  /\b(?:for|about|regarding|on|in case of|in the case of)\s+(?:\w+\s+){0,3}(?:automated|AI)[\w-]*\s+(?:individual\s+)?decisions?\b|\b(?:bei|für|im Fall(?:e)? von)\s+(?:\w+\s+){0,2}automatisierten\s+(?:Einzel)?[Ee]ntscheid\w*|\b(?:en cas de|pour les|pour des)\s+(?:\w+\s+){0,2}décisions?\s+(?:\S+\s+){0,6}automatis\S*|\b(?:in caso di|per le|per decisioni)\s+(?:\w+\s+){0,2}decision\w*\s+(?:\S+\s+){0,6}automatizzat\S*/gi;
+
+/** Text with neutral status and law-scope phrases removed, before checking for assertions. */
+export function withoutScopePhrases(text: string): string {
+  return text.replace(STATUS_PHRASES, '').replace(LAW_SCOPE_PHRASES, '');
+}
+
 export function assertsAutomation(text: string): boolean {
-  const t = text.replace(STATUS_PHRASES, '');
+  const t = withoutScopePhrases(text);
   return AUTOMATION_WORDS.test(t) || AUTOMATION_ACRONYMS.test(t);
 }
 

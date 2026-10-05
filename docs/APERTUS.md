@@ -27,11 +27,13 @@ Every sentence Apertus writes must cite the IDs of the facts it relies on (`D*` 
 | Law | names a statute or article not in a cited legal reference for the selected jurisdiction |
 | Automation | says automation or AI was used without citing evidence of it |
 | Solely automated | claims a solely automated decision the engine did not establish |
+| Human decision | says a person made or reviewed the decision without citing evidence of it |
+| Malformed output | contains citation markup inside the sentence text |
 | Overclaims | states a legal conclusion or guarantee ("unlawful", "rechtswidrig", "illégal", "illegittimo"…) |
 
 Verified sentences are shown in green and can be clicked to see their sources. For evidence, the exact sentence is highlighted in the original notice. Blocked sentences are struck through, with the reason.
 
-**Limits:** Receipts checks facts, numbers, quotes, law and automation claims. It cannot judge tone or every nuance of meaning.
+**Limits:** Receipts checks facts, numbers, quotes, law, automation and human-decision claims. It does not check proper names, tone or every nuance of meaning. Greetings, sign-offs and uncited statements that the facts do not say something are shown as non-claims and never counted as verified. See also the benchmark in `benchmarks/`.
 
 ## Translation safeguards
 

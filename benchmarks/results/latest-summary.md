@@ -1,6 +1,6 @@
 # REDRESS × Apertus benchmark — results
 
-Run 2026-10-05T12:11:31.585Z → 2026-10-05T12:16:27.407Z · endpoint `api.inference.cscs.ch` · commit `e5fbe42` · 20 cases × 2 run(s) per model.
+Run 2026-10-05T12:19:00.483Z → 2026-10-05T12:23:44.705Z · endpoint `api.inference.cscs.ch` · commit `a834446` · 20 cases × 2 run(s) per model.
 Settings: translation temperature 0, generation temperature 0.2, max_tokens 3000 (translation) / 2000 (generation), per-call timeout 120 s.
 
 All numbers below are automated measurements produced by `benchmarks/run.ts`. Methodology and limitations: `benchmarks/README.md`.
@@ -9,22 +9,22 @@ All numbers below are automated measurements produced by `benchmarks/run.ts`. Me
 
 | Metric | `swiss-ai/Apertus-v1.5-8B` | `swiss-ai/Apertus-v1.5-70B` |
 |---|---|---|
-| Task success (model output usable, no fallback) | 97.5% | 99.2% |
-| JSON valid as returned (all model outputs) | 44.7% | 99.3% |
-| JSON usable only after the narrow repair | 40.0% | 0.0% |
-| JSON salvaged item by item | 6.7% | 0.0% |
-| Claims checked by Receipts | 721 | 853 |
-| Verified claims | 78.8% | 94.3% |
-| Blocked (unsupported) claims | 21.2% | 5.7% |
-| Source grounding (claims citing only real facts) | 92.0% | 88.7% |
-| Output in the requested language | 99.1% | 96.6% |
-| Explanation completeness (4 required parts) | 67.9% | 98.1% |
-| Letter coverage (REDRESS requests included) | 58.2% | 99.2% |
+| Task success (model output usable, no fallback) | 95.8% | 96.7% |
+| JSON valid as returned (all model outputs) | 40.7% | 96.7% |
+| JSON usable only after the narrow repair | 44.0% | 0.0% |
+| JSON salvaged item by item | 5.3% | 0.7% |
+| Claims checked by Receipts | 728 | 843 |
+| Verified claims | 92.7% | 97.7% |
+| Blocked (unsupported) claims | 7.3% | 2.3% |
+| Source grounding (claims citing only real facts) | 91.7% | 98.0% |
+| Output in the requested language | 100.0% | 96.6% |
+| Explanation completeness (4 required parts) | 82.2% | 98.1% |
+| Letter coverage (REDRESS requests included) | 80.7% | 100.0% |
 | Translation success (non-English notices) | 66.7% | 100.0% |
 | Automation status correct after translation | 73.3% | 100.0% |
-| Median latency per task | 2.6 s | 6.4 s |
-| 90th percentile latency per task | 3.8 s | 9.6 s |
-| Mean completion tokens per case | 1063 | 1250 |
+| Median latency per task | 2.4 s | 6.3 s |
+| 90th percentile latency per task | 3.4 s | 9.4 s |
+| Mean completion tokens per case | 1020 | 1241 |
 
 ## By task
 
@@ -32,31 +32,31 @@ All numbers below are automated measurements produced by `benchmarks/run.ts`. Me
 
 | Metric | `swiss-ai/Apertus-v1.5-8B` | `swiss-ai/Apertus-v1.5-70B` |
 |---|---|---|
-| Success | 97.5% | 100.0% |
-| Claims | 406 | 415 |
-| Verified | 75.6% | 96.6% |
-| Blocked | 24.4% | 3.4% |
-| Median latency | 3.0 s | 6.6 s |
+| Success | 95.0% | 100.0% |
+| Claims | 378 | 410 |
+| Verified | 94.2% | 98.3% |
+| Blocked | 5.8% | 1.7% |
+| Median latency | 2.6 s | 6.3 s |
 
 **letter**
 
 | Metric | `swiss-ai/Apertus-v1.5-8B` | `swiss-ai/Apertus-v1.5-70B` |
 |---|---|---|
-| Success | 95.0% | 100.0% |
-| Claims | 236 | 348 |
-| Verified | 83.1% | 97.7% |
-| Blocked | 16.9% | 2.3% |
-| Median latency | 3.2 s | 8.7 s |
+| Success | 92.5% | 100.0% |
+| Claims | 278 | 356 |
+| Verified | 92.1% | 98.3% |
+| Blocked | 7.9% | 1.7% |
+| Median latency | 3.2 s | 8.3 s |
 
 **answer**
 
 | Metric | `swiss-ai/Apertus-v1.5-8B` | `swiss-ai/Apertus-v1.5-70B` |
 |---|---|---|
-| Success | 100.0% | 97.5% |
-| Claims | 79 | 90 |
-| Verified | 82.3% | 70.0% |
-| Blocked | 17.7% | 30.0% |
-| Median latency | 0.6 s | 1.4 s |
+| Success | 100.0% | 90.0% |
+| Claims | 72 | 77 |
+| Verified | 87.5% | 92.2% |
+| Blocked | 12.5% | 7.8% |
+| Median latency | 0.6 s | 1.6 s |
 
 ## By notice language
 
@@ -64,8 +64,8 @@ All numbers below are automated measurements produced by `benchmarks/run.ts`. Me
 
 | Metric | `swiss-ai/Apertus-v1.5-8B` | `swiss-ai/Apertus-v1.5-70B` |
 |---|---|---|
-| Task success | 100.0% | 96.7% |
-| Verified | 64.3% | 96.6% |
+| Task success | 96.7% | 90.0% |
+| Verified | 88.6% | 97.0% |
 | Output in requested language | 100.0% | 100.0% |
 
 **de**
@@ -73,37 +73,39 @@ All numbers below are automated measurements produced by `benchmarks/run.ts`. Me
 | Metric | `swiss-ai/Apertus-v1.5-8B` | `swiss-ai/Apertus-v1.5-70B` |
 |---|---|---|
 | Task success | 100.0% | 100.0% |
-| Verified | 96.0% | 94.1% |
+| Verified | 95.0% | 97.7% |
 | Output in requested language | 100.0% | 100.0% |
 
 **fr**
 
 | Metric | `swiss-ai/Apertus-v1.5-8B` | `swiss-ai/Apertus-v1.5-70B` |
 |---|---|---|
-| Task success | 96.7% | 100.0% |
-| Verified | 82.3% | 89.5% |
-| Output in requested language | 100.0% | 86.7% |
+| Task success | 96.7% | 96.7% |
+| Verified | 94.3% | 96.6% |
+| Output in requested language | 100.0% | 86.2% |
 
 **it**
 
 | Metric | `swiss-ai/Apertus-v1.5-8B` | `swiss-ai/Apertus-v1.5-70B` |
 |---|---|---|
-| Task success | 93.3% | 100.0% |
-| Verified | 71.4% | 96.8% |
-| Output in requested language | 96.4% | 100.0% |
+| Task success | 90.0% | 100.0% |
+| Verified | 93.0% | 99.5% |
+| Output in requested language | 100.0% | 100.0% |
 
 ## Why claims were blocked
 
 | Reason (count; a claim can have several) | `swiss-ai/Apertus-v1.5-8B` | `swiss-ai/Apertus-v1.5-70B` |
 |---|---|---|
-| fabricated_citation | 12 | 0 |
+| fabricated_citation | 10 | 0 |
 | framing_too_long | 1 | 0 |
 | legal_conclusion | 0 | 1 |
-| no_citation | 23 | 19 |
-| unsupported_automation_claim | 2 | 18 |
-| unsupported_law | 11 | 0 |
-| unsupported_number | 126 | 11 |
-| unsupported_quote | 8 | 4 |
+| malformed_output | 13 | 0 |
+| no_citation | 23 | 5 |
+| unsupported_automation_claim | 5 | 9 |
+| unsupported_law | 10 | 0 |
+| unsupported_number | 10 | 2 |
+| unsupported_quote | 1 | 3 |
+| unsupported_solely_claim | 2 | 0 |
 
 ## Automation-status mismatches
 
@@ -118,7 +120,12 @@ All numbers below are automated measurements produced by `benchmarks/run.ts`. Me
 
 ## Fallbacks (model output not usable)
 
-- `swiss-ai/Apertus-v1.5-8B` run 1, `it-05-job-not-established` letter: Apertus (swiss-ai/Apertus-v1.5-8B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.
-- `swiss-ai/Apertus-v1.5-8B` run 2, `fr-01-credit-automated` explain: Apertus (swiss-ai/Apertus-v1.5-8B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.
-- `swiss-ai/Apertus-v1.5-8B` run 2, `it-02-telecom-solely` letter: Apertus (swiss-ai/Apertus-v1.5-8B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.
-- `swiss-ai/Apertus-v1.5-70B` run 1, `en-03-tenancy-algorithm` answer: Apertus (swiss-ai/Apertus-v1.5-70B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.
+- `swiss-ai/Apertus-v1.5-8B` run 1, `fr-01-credit-automated` explain: Apertus (swiss-ai/Apertus-v1.5-8B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.
+- `swiss-ai/Apertus-v1.5-8B` run 1, `it-02-telecom-solely` letter: Apertus (swiss-ai/Apertus-v1.5-8B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.
+- `swiss-ai/Apertus-v1.5-8B` run 2, `en-02-account-solely` explain: Apertus (swiss-ai/Apertus-v1.5-8B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.
+- `swiss-ai/Apertus-v1.5-8B` run 2, `it-03-insurance-algorithm` letter: Apertus (swiss-ai/Apertus-v1.5-8B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.
+- `swiss-ai/Apertus-v1.5-8B` run 2, `it-05-job-not-established` letter: Apertus (swiss-ai/Apertus-v1.5-8B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.
+- `swiss-ai/Apertus-v1.5-70B` run 1, `en-04-insurance-human` answer: Apertus (swiss-ai/Apertus-v1.5-70B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.
+- `swiss-ai/Apertus-v1.5-70B` run 2, `en-03-tenancy-algorithm` answer: Apertus (swiss-ai/Apertus-v1.5-70B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.
+- `swiss-ai/Apertus-v1.5-70B` run 2, `en-04-insurance-human` answer: Apertus (swiss-ai/Apertus-v1.5-70B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.
+- `swiss-ai/Apertus-v1.5-70B` run 2, `fr-05-school-not-established` answer: Apertus (swiss-ai/Apertus-v1.5-70B) was unavailable (Response has no usable sentences). Showing REDRESS's rule-based output in English instead.

@@ -32,6 +32,7 @@ import {
   assertsAutomation,
   assertsHumanDecision,
   isNonClaim,
+  withoutScopePhrases,
   HEDGE_MARKERS,
   LAW_NAMES,
   OVERCLAIM,
@@ -122,7 +123,7 @@ export function verifySentence(
   }
 
   // 6. Solely automated
-  if (SOLELY_ASSERTION.test(text) && !hedged && automation.involvement !== 'solely_automated') {
+  if (SOLELY_ASSERTION.test(withoutScopePhrases(text)) && !hedged && automation.involvement !== 'solely_automated') {
     reasons.push('Claims the decision was solely automated — the evidence does not establish that');
   }
 

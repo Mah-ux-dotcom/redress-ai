@@ -75,6 +75,8 @@ Apertus receives a numbered **fact sheet** and must cite fact IDs for every sent
 | Solely automated | claims a solely automated decision that REDRESS did not establish |
 | Legal conclusions | states a conclusion or guarantee ("unlawful", "rechtswidrig", "illégal", "illegittimo", "you will win"…) |
 
+Sentences in which the citation markup leaked into the text are blocked as malformed output. Uncited statements that the facts do *not* say something ("the notice does not state whether…") are shown as non-claims: they are not counted as verified, and they still cannot carry numbers, laws or legal conclusions. If the model writes in a different language from the one requested, REDRESS shows a warning.
+
 Verified sentences show a shield; clicking one shows its sources and highlights the exact sentence in the user's original notice, even when that notice was in another language. Blocked sentences stay visible, struck through, with the reason. Greetings and sign-offs make no factual claim and are not counted as verified.
 
 Additional safeguards:
@@ -82,7 +84,7 @@ Additional safeguards:
 - **Untrusted input.** Quoted notice text and user questions are passed as delimited data, and the model is told to ignore instructions inside them. Even if a model obeys an injected instruction, Receipts still checks the output.
 - **Fallback.** If the model times out, errors or returns unusable output, REDRESS shows its rule-based output with a notice. One narrow, documented JSON repair handles a common small-model formatting error; repaired output is still fully verified.
 
-**Limits:** Receipts checks facts, numbers, quotes, law, automation and human-decision claims, and legal conclusions. It cannot judge tone or every nuance of meaning, and the UI says so.
+**Limits:** Receipts checks citations, numbers, quotes, laws, automation and human-decision claims, and legal conclusions. It does **not** check proper names (in the benchmark, the 70B model once renamed "Assurances Exemple SA" to "Example Insurance SA"), tone, or every nuance of meaning, and a hedged sentence ("may", "whether") is treated more leniently than a direct assertion. The UI tells users to read the text before using it.
 
 ## Jurisdictions
 
@@ -170,9 +172,9 @@ npm run benchmark:apertus
 
 ## Known limitations
 
+- **Receipts' blind spots.** It checks claims against facts, but not organisation names, tone or completeness (see above).
 - **Coverage.** The automation analysis is pattern-based and works on English text, which is why non-English notices are translated first. Unusual wording can be missed.
 - **Legal references.** They are summaries, not legal advice, and the law changes (several entries carry currency notes).
-- **Receipts' scope.** It checks claims, not tone or completeness.
 - **Server needed for real Apertus.** Real-Apertus features need the proxy (or an equivalent serverless function), so a static hosting deploy runs the stand-in or rule-based mode only.
 - **Interface language.** The UI is English; only generated content is multilingual.
 - **Stand-in model.** It can only translate the built-in demo notices.
