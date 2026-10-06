@@ -60,6 +60,8 @@ export function generateActionPlan(
     clarificationActions.push(
       `Consider including a request for a copy of your personal data (Article 15 ${jurisdiction === 'UK' ? 'UK GDPR' : 'GDPR'})`,
     );
+  } else if (jurisdiction === 'CH') {
+    clarificationActions.push('Consider including a request for access to your personal data, including any automated individual decision and its logic (Art. 25 FADP)');
   } else if (jurisdiction === 'US' && extracted.decisionType === 'Loan / Credit Application') {
     clarificationActions.push('Ask for the statement of specific reasons for the credit decision (ECOA / Regulation B)');
   } else if (!jurisdiction || jurisdiction === 'GENERAL') {
@@ -103,6 +105,8 @@ export function generateActionPlan(
     }
   } else if (jurisdiction === 'EU') {
     escalationActions.push('If you do not receive a satisfactory response, you may complain to your national Data Protection Authority');
+  } else if (jurisdiction === 'CH') {
+    escalationActions.push('If it is not resolved, you may report it to the Federal Data Protection and Information Commissioner (FDPIC / EDÖB); for cantonal or communal authorities, contact the cantonal data protection authority');
   } else if (jurisdiction === 'US') {
     escalationActions.push('If the decision involves credit, you may file a complaint with the CFPB');
     escalationActions.push('You may also contact your state Attorney General\u2019s office or relevant state agency');

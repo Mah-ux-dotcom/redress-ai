@@ -225,7 +225,7 @@ const DATE_PATTERNS = [
 // ---------------------------------------------------------------------------
 
 const ORG_PATTERNS = [
-  /(?:Regards|Sincerely|Best wishes|Yours faithfully|Yours sincerely),?[ \t]*\n[ \t]*([A-Z][A-Za-z0-9&' ]{2,40})/,
+  /(?:Regards|Sincerely|Best wishes|Yours faithfully|Yours sincerely),?[ \t]*\n[ \t]*([A-Z][A-Za-z0-9&'() ]{2,40})/,
   /(?:from|by|at)\s+([A-Z][a-zA-Z0-9&'\s]{2,30}(?:Ltd|Limited|Inc|LLC|Corp|Corporation|Bank|Financial|Credit|Insurance|Services|Group|Capital|Trust)?)\b/g,
   /^([A-Z][a-zA-Z0-9&'\s]{2,30}(?:Ltd|Limited|Inc|LLC|Corp|Corporation))$/m,
   /Dear\s+(?:Mr|Ms|Mrs|Miss|Dr)\s+\w+,?\s*\n\s*(?:.*?\n){0,2}?\s*(?:Regards|Sincerely|Best),?\s*\n\s*([A-Z][a-zA-Z0-9&'\s]{2,40})/i,

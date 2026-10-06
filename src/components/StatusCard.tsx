@@ -91,7 +91,12 @@ export function StatusCard({ analysis, extracted, onContinue }: StatusCardProps)
                     </div>
                     <div className="ml-4 mt-1 flex items-start gap-1.5 rounded-md bg-ink-50 px-3 py-1.5 text-xs italic text-ink-500">
                       <Quote className="mt-0.5 h-3 w-3 shrink-0" />
-                      <span>{signal.quote}</span>
+                      <span>
+                        {signal.originalQuote ?? signal.quote}
+                        {signal.originalQuote && (
+                          <span className="mt-0.5 block not-italic text-ink-400">Translation: {signal.quote}</span>
+                        )}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -103,7 +108,7 @@ export function StatusCard({ analysis, extracted, onContinue }: StatusCardProps)
             )}
             {notCounted.map((signal, i) => (
               <p key={i} className="mt-2 text-xs text-ink-400">
-                Not counted as evidence: “{signal.quote}” — {signal.text.toLowerCase()}.
+                Not counted as evidence: “{signal.originalQuote ?? signal.quote}” — {signal.text.toLowerCase()}.
               </p>
             ))}
           </div>
