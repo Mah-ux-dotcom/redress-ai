@@ -150,6 +150,10 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       stdio: 'inherit',
     });
     child.on('exit', (code) => process.exit(code ?? 0));
+    // Stopping the launcher must stop the server too.
+    for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP']) {
+      process.on(signal, () => child.kill(signal));
+    }
   } else {
     try {
       process.loadEnvFile?.();

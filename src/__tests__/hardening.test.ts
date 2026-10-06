@@ -372,6 +372,56 @@ describe('Benchmark findings: checker false positives fixed, genuine errors stil
 });
 
 // ---------------------------------------------------------------------------
+describe('Full-app audit findings', () => {
+  const ctx = setup(DEMO_CASE.decisionText, 'CH');
+
+  it("the user's own name as a signature is not blocked, but an invented contact detail is", async () => {
+    const content = JSON.stringify({
+      sentences: [
+        { text: 'NovaCredit Loan Services refused my loan application.', cites: ['D1', 'D2'] },
+        { text: 'I can be contacted at laura.keller@example.com.', cites: [] },
+        { text: 'Laura Keller', cites: [] },
+      ],
+    });
+    const out = await generateGrounded({ client: fakeClient(content), task: 'letter', language: 'en', userName: 'Laura Keller', ...ctx, ruleBasedLetter: ctx.letter });
+    expect(out.sentences.map((s) => s.verdict)).toEqual(['verified', 'blocked', 'verified']);
+    expect(out.sentences[2].framing).toBe(true);
+    expect(out.summary).toEqual({ checked: 2, verified: 1, blocked: 1 });
+  });
+
+  it('a different name is not treated as the signature', async () => {
+    const content = JSON.stringify({ sentences: [{ text: 'Max Muster', cites: [] }] });
+    const out = await generateGrounded({ client: fakeClient(content), task: 'letter', language: 'en', userName: 'Laura Keller', ...ctx, ruleBasedLetter: ctx.letter });
+    expect(out.sentences[0].verdict).toBe('blocked');
+  });
+
+  it('closing formulas are non-claims in every language, but a sentence of claims is not', () => {
+    for (const t of ['Mit freundlichen Grüßen', 'Freundliche Grüsse', 'Cordialement.', 'Cordiali saluti.', 'Saluti', 'Kind regards,']) {
+      const r = verifySentence({ text: t, cites: [] }, ctx.sheet, ctx.automation);
+      expect(r.verdict, t).toBe('verified');
+      expect(r.framing, t).toBe(true);
+    }
+    expect(verifySentence({ text: 'Kind regards, and you will win this case.', cites: [] }, ctx.sheet, ctx.automation).verdict).toBe('blocked');
+  });
+
+  it('"unless" / "qualora" conditions count as hedges (final audit)', () => {
+    const conf = setup(DEMO_CASE.decisionText, 'CH');
+    const art21 = conf.sheet.facts.find((f) => f.kind === 'law' && f.text.startsWith('FADP Art. 21'))!.id;
+    expect(verifySentence({ text: "Secondo l'art. 21 FADP può chiedere un riesame da parte di una persona qualora la decisione sia stata presa unicamente da un sistema automatizzato.", cites: [art21] }, conf.sheet, conf.automation).verdict).toBe('verified');
+  });
+
+  it('only letters ask for a greeting and sign-off', () => {
+    expect(buildGenerationMessages('explain', 'de', ctx.sheet)[1].content).toMatch(/Do not add a greeting or sign-off/);
+    expect(buildGenerationMessages('letter', 'de', ctx.sheet)[1].content).toMatch(/including the greeting and sign-off/);
+  });
+
+  it('the prompt states the output language for every sentence', () => {
+    const msgs = buildGenerationMessages('letter', 'fr', ctx.sheet, { userName: 'Laura Keller' });
+    expect(msgs[1].content).toMatch(/Write every sentence in French \(Français\)/);
+  });
+});
+
+// ---------------------------------------------------------------------------
 describe('Failure handling', () => {
   const ctx = setup(DEMO_CASE.decisionText);
 

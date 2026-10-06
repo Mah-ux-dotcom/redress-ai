@@ -146,8 +146,17 @@ export function verifyAll(
   sentences: DraftSentence[],
   sheet: FactSheet,
   automation: AutomationAnalysis,
+  /** The user's own name: a line consisting only of it is a signature, not a claim. */
+  userName?: string,
 ): { sentences: ReceiptSentence[]; summary: ReceiptsSummary } {
-  const checked = sentences.map((s) => verifySentence(s, sheet, automation));
+  const signature = userName?.trim().toLowerCase();
+  const checked = sentences.map((s) =>
+    verifySentence(
+      signature && s.text.trim().replace(/[.,]$/, '').toLowerCase() === signature ? { ...s, framing: true, cites: [] } : s,
+      sheet,
+      automation,
+    ),
+  );
   // Framing lines make no factual claim: they are never counted as "verified",
   // so the counter cannot overstate how much was checked against sources.
   const claims = checked.filter((s) => !(s.framing && s.verdict === 'verified'));

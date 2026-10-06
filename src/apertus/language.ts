@@ -151,7 +151,7 @@ export const SOLELY_ASSERTION: RegExp =
  * A sentence containing one of these is not treated as a factual assertion.
  */
 export const HEDGE_MARKERS: RegExp =
-  /\?|\bwhere applicable\b|\bif applicable\b|\bif so\b|\ble cas échéant\b|\bsi tel est le cas\b|\bgegebenenfalls\b|\bggf\.|\bfalls\b|\bwenn\b|\bsofern\b|\bsoweit\b|\bse del caso\b|\bove applicabile\b|\bin tal caso\b|\beventualmente\b|\bwhether\b|\bif\b|\bmay\b|\bmight\b|\bnot (?:established|stated|say|said|show|prove)|\bdoes not\b|\bdo not know\b|\bunclear\b|\bask\b|\bob\b|\bfalls\b|\bnicht\b|\bweder\b|\bkein(?:e|en)?\b|\bkönnte\b|\bunklar\b|\bfragen\b|\bsi\b|\bpas\b|\bne\b|\bni\b|\bn['’]|\bné\b|\bpeut-être\b|\bpourrait\b|\bdemander\b|\bse\b|\bnon\b|\bpotrebbe\b|\bchiedere\b|\bforse\b/i;
+  /\?|\bunless\b|\bes sei denn\b|\bsauf si\b|\bà moins que\b|\ba meno che\b|\bqualora\b|\bpurché\b|\bwhere applicable\b|\bif applicable\b|\bif so\b|\ble cas échéant\b|\bsi tel est le cas\b|\bgegebenenfalls\b|\bggf\.|\bfalls\b|\bwenn\b|\bsofern\b|\bsoweit\b|\bse del caso\b|\bove applicabile\b|\bin tal caso\b|\beventualmente\b|\bwhether\b|\bif\b|\bmay\b|\bmight\b|\bnot (?:established|stated|say|said|show|prove)|\bdoes not\b|\bdo not know\b|\bunclear\b|\bask\b|\bob\b|\bfalls\b|\bnicht\b|\bweder\b|\bkein(?:e|en)?\b|\bkönnte\b|\bunklar\b|\bfragen\b|\bsi\b|\bpas\b|\bne\b|\bni\b|\bn['’]|\bné\b|\bpeut-être\b|\bpourrait\b|\bdemander\b|\bse\b|\bnon\b|\bpotrebbe\b|\bchiedere\b|\bforse\b/i;
 
 /**
  * Statements that the facts do NOT say something ("the notice does not state
@@ -165,8 +165,12 @@ const NON_CLAIM: RegExp[] = [
   /\bnon\b.{0,40}\b(?:dic\w+|indic\w+|precis\w+|dimostr\w+|stabilisc\w+|menzion\w+|specific\w+|prov\w+|permett\w+|chiar\w+)/i,
 ];
 
+/** Standard closing formulas — courtesy, not claims. */
+const CLOSINGS =
+  /^(?:(?:kind |best |warm )?regards|yours (?:faithfully|sincerely)|sincerely|best wishes|(?:mit )?freundliche[nr]? grü(?:ss|ß)en?|beste grü(?:ss|ß)e|hochachtungsvoll|cordialement|bien (?:cordialement|à vous)|salutations distinguées|meilleures salutations|(?:cordiali |distinti )?saluti|cordialmente|un cordiale saluto)[.,!]?$/i;
+
 export function isNonClaim(text: string): boolean {
-  return NON_CLAIM.some((re) => re.test(text));
+  return CLOSINGS.test(text.trim()) || NON_CLAIM.some((re) => re.test(text));
 }
 
 /** Legal conclusions, guarantees and certainty REDRESS never states as fact. */

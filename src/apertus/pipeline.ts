@@ -191,7 +191,7 @@ export async function generateGrounded(params: GenerateParams): Promise<Grounded
       maxTokens: 2000,
     });
     const { drafts, quality } = parseDraft(content);
-    const { sentences, summary } = verifyAll(drafts, sheet, automation);
+    const { sentences, summary } = verifyAll(drafts, sheet, automation, params.userName);
     const written = detectOutputLanguage(sentences.map((s) => s.text));
     return {
       language,

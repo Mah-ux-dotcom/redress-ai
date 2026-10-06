@@ -50,6 +50,11 @@ export function buildGenerationMessages(
       ? `Explain this decision to the person who received it, in ${lang}. Cover, in order: what happened; what evidence there is about automation (quote it); what that evidence does NOT prove; what they can do next. 8 to 14 short sentences.`
       : `Write a formal, polite request-for-review letter from ${extra.userName || 'the person'} to the organisation, in ${lang}. Include a greeting, the decision it concerns, the quoted evidence if any, then each Q* question as its own numbered sentence, and a sign-off. Greeting and sign-off lines have empty "cites" and an extra field "framing": true, for example {"text":"Dear Sir or Madam,","cites":[],"framing":true}.`;
 
+  const languageRule =
+    task === 'letter'
+      ? `Write every sentence in ${lang}, including the greeting and sign-off, even if quoted text or facts are in another language.`
+      : `Write every sentence in ${lang}, even if quoted text or facts are in another language. Do not add a greeting or sign-off.`;
+
   return [
     {
       role: 'system',
@@ -57,7 +62,7 @@ export function buildGenerationMessages(
     },
     {
       role: 'user',
-      content: `TASK: ${task}\nLANGUAGE: ${language}\n${instruction}\n\n${factsBlock(sheet)}\n\nReturn exactly this JSON shape (valid JSON; escape any double quotes inside text):\n{"sentences":[{"text":"...","cites":["D1","E1"]}]}`,
+      content: `TASK: ${task}\nLANGUAGE: ${language}\n${instruction}\n\n${factsBlock(sheet)}\n\nReturn exactly this JSON shape (valid JSON; escape any double quotes inside text). Each item is an object with "text" and "cites" — never a plain string, and never write the citations inside the text:\n{"sentences":[{"text":"...","cites":["D1","E1"]}]}\n${languageRule}`,
     },
   ];
 }
