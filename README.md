@@ -108,31 +108,35 @@ The legal text was last reviewed in October 2026. Swiss provisions were checked 
 
 A reproducible benchmark on 20 synthetic notices (5 each in English, German, French and Italian) runs the exact REDRESS pipeline with both models: `npm run benchmark:apertus`.
 
-### Results (final run, 5 October 2026)
+### Results (final run, 6 October 2026)
 
-20 notices × 2 runs per model, same inputs and prompts, on the Hack Apertus CSCS endpoint. Full tables: [`benchmarks/results/latest-summary.md`](benchmarks/results/latest-summary.md). Every sentence and verdict: `benchmarks/results/2026-10-05-12-26.json`. Methodology and limitations: [`benchmarks/README.md`](benchmarks/README.md).
+20 notices × 2 runs per model, same inputs and prompts, on the Hack Apertus CSCS endpoint. Full tables: [`benchmarks/results/latest-summary.md`](benchmarks/results/latest-summary.md). Every sentence and verdict: `benchmarks/results/2026-10-06-14-50.json`. Methodology and limitations: [`benchmarks/README.md`](benchmarks/README.md).
 
 | Automated measurement | Apertus 1.5 8B | Apertus 1.5 70B |
 |---|---|---|
-| Task success (output usable, no fallback) | 94.2% | **100%** |
-| JSON valid as returned | 38.7% | **99.3%** |
-| Claims verified by Receipts | 91.6% (712 claims) | **97.0%** (860 claims) |
-| Fabricated citations | 1 | **0** |
-| Explanation completeness (4 required parts) | 80.1% | **99.4%** |
-| Letter coverage (REDRESS requests included) | 69.3% | **100%** |
-| Non-English notices translated | 66.7% | **100%** |
-| Automation status correct after translation | 73.3% | **100%** |
-| Output in the requested language | **100%** | 96.7% |
-| Median latency per task | **2.5 s** | 6.4 s |
+| Task success (output usable, no fallback) | 96.7% | **100%** |
+| JSON valid as returned | 53.3% | **100%** |
+| Claims verified by Receipts | 94.4% (906 claims) | **98.5%** (895 claims) |
+| Fabricated citations | 11 | **0** |
+| Explanation completeness (4 required parts) | 90.8% | **99.4%** |
+| Letter coverage (REDRESS requests included) | 80.6% | **100%** |
+| Non-English notices translated | 76.7% | **100%** |
+| Automation status correct after translation | 83.3% | **100%** |
+| Output in the requested language | 100% | 100% |
+| Median latency per task | **2.6 s** | 6.2 s |
 
 What this shows:
-- **70B is the right default for REDRESS.** It translated every non-English notice correctly, almost always returned valid structured output, and covered every required part of explanations and letters.
-- **8B is about 2.5 times faster, but fragile.** Only 39% of its outputs were valid JSON as returned; most were usable only after a narrow, documented repair. It could not translate 4 of the 15 non-English notices (the same 4 in both runs), and each of those notices was then mis-classified as "not established".
-- **8B did better on language.** 70B wrote 4 of its 10 French letters in English (all its other outputs were in the requested language). REDRESS now warns the user when this happens.
-- **Receipts mattered for both models.** For 8B it mostly blocked laws and numbers that weren't in the sources, malformed output and one fabricated citation. For 70B it mostly blocked malformed output (citation markup written into the sentence), quotes that weren't verbatim, and unsupported automation or "solely automated" claims.
-- **Run-to-run variation was small** for the overall verified rate (8B 91.2% / 91.9%; 70B 96.9% / 97.0%). It is larger for free-form answers, which have few claims per run.
+- **70B is the right default for REDRESS.** Every output was usable and valid JSON, every non-English notice was translated and classified correctly, and it never fabricated a citation.
+- **8B is about 2.4 times faster, but fragile.** About half its outputs needed the narrow JSON repair or item-by-item salvage. It could not translate 7 of its 30 non-English notices, which led to wrong statuses on 3 of the 15 notices. It also fabricated 11 citations, all of which Receipts blocked.
+- **Receipts still matters for 70B.** It blocked paraphrased "quotes" of the notice, numbers and automation claims that weren't in the cited facts, and a law not in the cited reference (1.5% of 70B's claims).
+- **Run-to-run variation was small:** verified claims 93.8% / 95.0% (8B) and 98.4% / 98.7% (70B).
 
-**How the benchmark improved REDRESS.** The first run (`2026-10-05-12-11`, kept unchanged) exposed a real translation bug and several Receipts false positives, for example inline fact IDs being read as numbers and honest "the notice does not say…" sentences being blocked. These were fixed with regression tests. The run was then repeated twice, and all three result files are in `benchmarks/results/`. After the final run, two more German hedge patterns ("wenn", "lässt nicht erkennen") were fixed. They affected 3 of the 70B's 86 free-form answer claims, and the numbers above do not include that fix.
+**How the benchmark improved REDRESS.** The benchmark was run five times, and every result file is kept in `benchmarks/results/`. Each run exposed something that was then fixed with a regression test:
+- **Run 1:** a translation bug, and Receipts false positives such as inline fact IDs being read as numbers.
+- **Runs 2–3:** further false positives, for example general descriptions of what a law covers.
+- **Run 4:** a prompt change that stopped 70B writing French letters in English (it had done so in 4 of 10 French letters), but which also made explanations end with sign-offs.
+
+The numbers above are from run 5, on the submitted code. See the run history in `benchmarks/README.md`.
 
 **Not measured:** human ratings of fluency, tone and legal appropriateness. See the limitations in `benchmarks/README.md`.
 
