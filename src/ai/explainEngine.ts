@@ -318,17 +318,6 @@ const FALLBACK_RESPONSE: ExplainResponse = {
   caveats: ['This assistant answers only from your decision, extracted data, and selected jurisdiction. It does not provide legal advice.'],
 };
 
-/** True when the question matches one of REDRESS's fixed, rule-based topics. */
-export function matchesKnownTopic(question: string): boolean {
-  const lowerQ = question.toLowerCase();
-  return QUESTION_PATTERNS.some(({ keywords }) => keywords.some((k) => lowerQ.includes(k)));
-}
-
-/** The help text shown when a question cannot be answered. */
-export function fallbackHelpText(): string {
-  return FALLBACK_RESPONSE.answer;
-}
-
 export function explain(params: ExplainParams): ExplainResponse {
   const lowerQ = params.question.toLowerCase();
 

@@ -92,19 +92,6 @@ export function generateRightsOptions(
       jurisdictionContext: specific,
       source: access?.source,
     });
-  } else if (specific === 'CH') {
-    const access = findFramework('CH', (f) => f.scope === 'data_rights');
-    options.push({
-      id: 'request_info',
-      title: 'Request access to your personal data (Art. 25 FADP)',
-      explanation:
-        'You can ask whether, and which, personal data about you the organisation processes — whether or not automation was used. Where an automated individual decision was taken, the information includes its existence and the logic on which it is based.',
-      whyItMatters:
-        'You can check whether the information used about you was accurate and complete. The information should generally be provided within 30 days.',
-      confidence: 'high',
-      jurisdictionContext: 'CH',
-      source: access?.source,
-    });
   } else if (specific === 'US') {
     options.push({
       id: 'request_info',
@@ -147,16 +134,6 @@ export function generateRightsOptions(
       } else {
         explanation =
           'Human intervention is a legal safeguard only for decisions based solely on automated processing that significantly affect you. The notice does not establish that this decision was solely automated, so ask for a review by a person and ask the organisation to confirm how the decision was made.';
-      }
-    } else if (specific === 'CH') {
-      source = findFramework('CH', (f) => f.scope === 'solely_automated')?.source;
-      if (involvement === 'solely_automated') {
-        confidence = 'high';
-        explanation =
-          'The notice indicates the decision was made without a person. If it was based exclusively on automated processing and has a legal consequence or considerable adverse effect for you, you may ask to express your point of view and request review by a natural person — unless an exception applies (a contract-related decision where your request was granted, or your explicit consent).';
-      } else {
-        explanation =
-          'Swiss law gives a right to request review by a natural person for decisions based exclusively on automated processing that significantly affect you. The notice does not establish that this decision was exclusively automated, so ask for a review by a person and ask the organisation to confirm how the decision was made.';
       }
     } else if (specific === 'US') {
       source = findFramework('US', (f) => f.shortName === 'State laws')?.source;
@@ -260,10 +237,6 @@ export function generateRightsOptions(
     escalateText =
       'If the organisation does not resolve your concern, you can complain to a Data Protection Authority — for example, in the country where you live or work.';
     escalateSource = findFramework('EU', (f) => f.shortName === 'DPA complaint')?.source;
-  } else if (specific === 'CH') {
-    escalateText =
-      'If the organisation does not resolve your concern, you can report it to the Federal Data Protection and Information Commissioner (FDPIC / EDÖB), who decides whether to open an investigation. For decisions by cantonal or communal authorities, the cantonal data protection authority is responsible instead.';
-    escalateSource = findFramework('CH', (f) => f.shortName === 'FDPIC report')?.source;
   } else if (specific === 'US') {
     escalateText = isFinancial
       ? 'If the organisation does not resolve it, you can submit a complaint to the CFPB (for consumer financial products) or your state Attorney General.'

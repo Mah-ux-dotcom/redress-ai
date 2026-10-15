@@ -5,9 +5,6 @@ import { DEMO_PRESET_TEXTS, DEMO_CASE } from '@/data/demoCase';
 
 interface InputPanelProps {
   onSubmit: (text: string, method: InputMethod) => void;
-  /** True while a non-English notice is being translated. */
-  busy?: boolean;
-  apertusMode?: 'mock' | 'apertus' | 'off';
 }
 
 const METHODS: { id: InputMethod; label: string; icon: typeof ClipboardPaste; desc: string }[] = [
@@ -17,7 +14,7 @@ const METHODS: { id: InputMethod; label: string; icon: typeof ClipboardPaste; de
   { id: 'manual', label: 'Enter Manually', icon: PenLine, desc: 'Type the details yourself' },
 ];
 
-export function InputPanel({ onSubmit, busy = false, apertusMode = 'mock' }: InputPanelProps) {
+export function InputPanel({ onSubmit }: InputPanelProps) {
   const [method, setMethod] = useState<InputMethod>('paste');
   const [text, setText] = useState('');
   const [error, setError] = useState('');
@@ -156,8 +153,8 @@ export function InputPanel({ onSubmit, busy = false, apertusMode = 'mock' }: Inp
               <Sparkles className="h-4 w-4" />
               Load Demo Case
             </button>
-            <button onClick={handleSubmit} disabled={busy} className="btn-primary">
-              {busy ? 'Translating with Apertus…' : 'Analyze Decision'}
+            <button onClick={handleSubmit} className="btn-primary">
+              Analyze Decision
             </button>
           </div>
         </div>
@@ -166,9 +163,7 @@ export function InputPanel({ onSubmit, busy = false, apertusMode = 'mock' }: Inp
       {/* Trust notice */}
       <div className="mt-4 flex items-center justify-center gap-2 text-xs text-ink-400">
         <AlertCircle className="h-3.5 w-3.5" />
-        {apertusMode === 'apertus'
-          ? 'Analysis runs in your browser. Translation and drafting send the notice to the configured Apertus endpoint via the REDRESS proxy.'
-          : 'Your text is processed locally in your browser. REDRESS does not send your data to external AI services in this mode.'}
+        Your text is processed locally in your browser. REDRESS does not send your data to external AI services in this demo.
       </div>
     </div>
   );

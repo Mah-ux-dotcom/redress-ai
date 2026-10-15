@@ -28,26 +28,6 @@ Date: 15 September 2026`,
   jurisdiction: 'UK' as const,
 };
 
-/** Fictional German-language notice (Swiss style) for the multilingual Apertus flow. */
-export const DEMO_CASE_DE = {
-  userName: 'Laura Keller',
-  decisionText: `Sehr geehrte Frau Keller
-
-Vielen Dank für Ihren Antrag auf einen Privatkredit bei NovaCredit (Schweiz) AG.
-
-Leider müssen wir Ihnen mitteilen, dass Ihr Antrag nach unserer automatisierten Bonitätsprüfung abgelehnt wurde.
-
-Ihr Antrag wurde mit unserem automatisierten Scoring-System bewertet und erreichte die erforderliche Mindestpunktzahl nicht.
-
-Referenz: NCS-2026-11402
-
-Bei Fragen wenden Sie sich bitte an kundendienst@novacredit-schweiz.example.
-
-Freundliche Grüsse
-NovaCredit (Schweiz) AG
-Datum: 28. September 2026`,
-};
-
 export const DEMO_PRESET_TEXTS: { label: string; text: string }[] = [
   {
     label: 'NovaCredit loan rejection (demo)',
@@ -92,9 +72,5 @@ We wish you the best in your job search.
 
 Recruitment Team
 TechCorp`,
-  },
-  {
-    label: 'NovaCredit Schweiz — Kreditablehnung (Deutsch)',
-    text: DEMO_CASE_DE.decisionText,
   },
 ];

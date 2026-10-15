@@ -130,13 +130,6 @@ export function generateChallengeLetter(params: GenerateParams): ChallengeLetter
         `If this decision was based solely on automated processing, please tell me so, and provide the information and safeguards that apply to such decisions under ${law}.`,
       );
     }
-  } else if (jurisdiction === 'CH') {
-    requests.push(
-      'Please treat this letter as a request for access under Article 25 of the Swiss Federal Act on Data Protection (FADP), including, where applicable, whether an automated individual decision was taken and the logic on which it was based.',
-    );
-    requests.push(
-      'If this decision was based exclusively on automated processing, please tell me so, give me the opportunity to express my point of view, and arrange for the decision to be reviewed by a natural person, as provided for in Article 21 FADP.',
-    );
   } else if (jurisdiction === 'US') {
     if (extracted.decisionType === 'Loan / Credit Application') {
       requests.push(

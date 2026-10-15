@@ -10,9 +10,6 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
-  // Forward Apertus calls to the local proxy, which holds the API key.
-  server: { proxy: { '/api': `http://127.0.0.1:${process.env.APERTUS_PROXY_PORT ?? 8787}` } },
-  preview: { proxy: { '/api': `http://127.0.0.1:${process.env.APERTUS_PROXY_PORT ?? 8787}` } },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },

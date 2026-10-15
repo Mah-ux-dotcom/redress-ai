@@ -187,68 +187,6 @@ export const JURISDICTIONS: LegalReference[] = [
     ],
   },
   {
-    code: 'CH',
-    label: 'Switzerland',
-    flag: '🇨🇭',
-    disclaimer:
-      'Based on the Swiss Federal Act on Data Protection (FADP). It applies to private organisations and federal bodies; cantonal and communal authorities are covered by cantonal data protection law instead. Whether any of it applies depends on the facts of your decision. It is not legal advice — check the FDPIC (EDÖB) or a qualified adviser.',
-    frameworks: [
-      {
-        name: 'FADP — automated individual decisions (Art. 21)',
-        shortName: 'FADP Art. 21',
-        description:
-          'Applies to decisions based exclusively on automated processing that have a legal consequence for you or a considerable adverse effect on you ("automated individual decisions").',
-        rights: [
-          'The organisation must inform you about an automated individual decision',
-          'On request, it must let you express your point of view',
-          'You may request that the automated individual decision be reviewed by a natural person',
-        ],
-        source: 'Federal Act on Data Protection (FADP, SR 235.1), Art. 21',
-        applicableWhen:
-          'The decision was based exclusively on automated processing and has a legal consequence for you or a considerable adverse effect on you.',
-        scope: 'solely_automated',
-        limitations:
-          'The right to state your view and to human review does not apply where the decision is directly connected with concluding or performing a contract with you and your request is granted, or where you explicitly consented to the decision being automated. Decisions by cantonal or communal authorities fall under cantonal law.',
-        humanReview:
-          'You may request review by a natural person for qualifying automated individual decisions. It is not a general right to human review of every decision.',
-        currency:
-          'In force since 1 September 2023 (revised FADP). Wording here is summarised from secondary sources and should be checked against the official text on fedlex.admin.ch (SR 235.1).',
-      },
-      {
-        name: 'FADP — right of access (Art. 25)',
-        shortName: 'FADP Art. 25',
-        description:
-          'You can ask an organisation whether it processes personal data about you and receive the information needed to exercise your rights — including, where applicable, the existence of an automated individual decision and the logic on which it is based.',
-        rights: [
-          'You can request information on whether, and which, personal data about you is processed — whether or not automation was used',
-          'Where applicable, the information includes the existence of an automated individual decision and the logic on which the decision is based',
-        ],
-        source: 'Federal Act on Data Protection (FADP, SR 235.1), Art. 25',
-        applicableWhen: 'Any private organisation or federal body that processes your personal data.',
-        scope: 'data_rights',
-        limitations:
-          'The information should generally be provided within 30 days. Restrictions can apply, for example to protect the interests of third parties.',
-        humanReview: 'Does not itself provide human review.',
-        currency:
-          'In force since 1 September 2023. Check the official text on fedlex.admin.ch (SR 235.1).',
-      },
-      {
-        name: 'Report to the Federal Data Protection and Information Commissioner (FDPIC / EDÖB / PFPDT / IFPDT)',
-        shortName: 'FDPIC report',
-        description:
-          'The FDPIC supervises compliance with the FADP and can open an investigation into a private organisation or federal body.',
-        rights: ['You can report a suspected breach of data protection rules to the FDPIC'],
-        source: 'Federal Act on Data Protection (FADP, SR 235.1), Art. 49',
-        applicableWhen: 'You believe your personal data was processed in breach of the FADP, including in an automated decision.',
-        scope: 'complaints',
-        limitations:
-          'The FDPIC decides whether to open an investigation; it does not act as your representative and does not usually overturn the underlying decision. Civil claims before the courts remain possible.',
-        humanReview: 'Not applicable.',
-        currency: 'In force since 1 September 2023.',
-      },
-    ],
-  },
-  {
     code: 'US',
     label: 'United States',
     flag: '🇺🇸',
@@ -390,10 +328,10 @@ export const JURISDICTIONS: LegalReference[] = [
 ];
 
 export function getJurisdiction(code: JurisdictionCode): LegalReference {
-  return JURISDICTIONS.find((j) => j.code === code) ?? JURISDICTIONS.find((j) => j.code === 'GENERAL')!;
+  return JURISDICTIONS.find((j) => j.code === code) ?? JURISDICTIONS[3];
 }
 
 /** True when a specific jurisdiction's law can be referenced (not unknown/general). */
-export function isSpecificJurisdiction(code: JurisdictionCode | null): code is 'UK' | 'EU' | 'CH' | 'US' {
-  return code === 'UK' || code === 'EU' || code === 'CH' || code === 'US';
+export function isSpecificJurisdiction(code: JurisdictionCode | null): code is 'UK' | 'EU' | 'US' {
+  return code === 'UK' || code === 'EU' || code === 'US';
 }

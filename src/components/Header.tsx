@@ -29,7 +29,7 @@ export function Header({ caseId, onReset }: HeaderProps) {
             </div>
           )}
           <div className="label-tag bg-brand-50 text-brand-700">
-            Hack Apertus 2026 · Built on Apertus
+            LexHack 2026 · AI Safety
           </div>
         </div>
       </div>

@@ -1,25 +1,13 @@
 import { useState } from 'react';
 import { FileText, Copy, Check, Download, User, ChevronRight, AlertCircle } from 'lucide-react';
-import type { AutomationAnalysis, ChallengeLetter, ExtractedData, JurisdictionCode } from '@/types';
-import type { ApertusClient, LanguageCode } from '@/apertus/types';
-import { ApertusPanel } from '@/components/ApertusPanel';
+import type { ChallengeLetter } from '@/types';
 
 interface ChallengeLetterViewProps {
   letter: ChallengeLetter;
   onContinue: () => void;
-  /** Context for drafting the letter in another language with Apertus + Receipts. */
-  apertus?: {
-    client: ApertusClient | null;
-    rawText: string;
-    extracted: ExtractedData;
-    automation: AutomationAnalysis;
-    jurisdiction: JurisdictionCode | null;
-    defaultLanguage: LanguageCode;
-    userName?: string;
-  };
 }
 
-export function ChallengeLetterView({ letter, onContinue, apertus }: ChallengeLetterViewProps) {
+export function ChallengeLetterView({ letter, onContinue }: ChallengeLetterViewProps) {
   const [editedBody, setEditedBody] = useState(letter.body);
   const [userName, setUserName] = useState('');
   const [copied, setCopied] = useState(false);
@@ -100,23 +88,6 @@ export function ChallengeLetterView({ letter, onContinue, apertus }: ChallengeLe
           />
         </div>
       </div>
-
-      {/* Multilingual draft with Receipts */}
-      {apertus && (
-        <div className="mt-4">
-          <ApertusPanel
-            task="letter"
-            client={apertus.client}
-            rawText={apertus.rawText}
-            extracted={apertus.extracted}
-            automation={apertus.automation}
-            jurisdiction={apertus.jurisdiction}
-            ruleBasedLetter={letter.body}
-            userName={userName || apertus.userName}
-            defaultLanguage={apertus.defaultLanguage}
-          />
-        </div>
-      )}
 
       {/* Safety note */}
       <div className="mt-4 flex items-start gap-2 rounded-lg bg-ink-50 p-3 text-xs text-ink-400">

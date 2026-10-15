@@ -368,9 +368,6 @@ describe('Regression — demo extraction', () => {
       'confirmed_automated',
       'human_indicated',
       'not_established',
-      // German preset: analysed directly by the English-only rule engine it is not
-      // established; the Apertus flow translates it first (see apertus.test.ts).
-      'not_established',
     ]);
   });
 });
