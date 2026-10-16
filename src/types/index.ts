@@ -14,7 +14,7 @@ export type AutomationStatus =
   | 'human_indicated';
 
 /** Jurisdictions supported by the MVP. */
-export type JurisdictionCode = 'UK' | 'EU' | 'US' | 'GENERAL';
+export type JurisdictionCode = 'UK' | 'EU' | 'CH' | 'US' | 'GENERAL';
 
 /** Challenge lifecycle status. */
 export type ChallengeStatus =
@@ -57,6 +57,11 @@ export interface StatusSignal {
   text: string;
   /** Verbatim excerpt from the decision text that the signal is based on. */
   quote: string;
+  /**
+   * When the notice was translated: the verbatim sentence in the ORIGINAL
+   * language that `quote` (English) was translated from.
+   */
+  originalQuote?: string;
   /**
    * automated     — explicit automated processing / system
    * ai            — explicit AI / machine learning
