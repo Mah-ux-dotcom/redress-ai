@@ -11,7 +11,7 @@
 // analysis → explanation, letter and free-form answer → Receipts.
 //
 // Writes the raw per-case results (every sentence, verdict and reason) and a
-// Markdown summary to benchmarks/results/. The API key is read from
+// Markdown summary to data/benchmark_results/. The API key is read from
 // APERTUS_API_KEY if set (or injected by the environment) and is never
 // written to disk or logs.
 // ============================================================================
@@ -36,7 +36,8 @@ import {
 import { renderSummary, type BenchmarkFile, type CaseResult, type TaskResult } from './summary';
 
 const DEFAULT_MODELS = ['swiss-ai/Apertus-v1.5-8B', 'swiss-ai/Apertus-v1.5-70B'];
-const BASE_URL = (process.env.APERTUS_BASE_URL || 'https://api.inference.cscs.ch/v1').replace(/\/+$/, '');
+const BASE_URL = (process.env.LLM_BASE_URL || process.env.APERTUS_BASE_URL || 'https://api.inference.cscs.ch/v1').replace(/\/+$/, '');
+const API_KEY = process.env.LLM_API_KEY || process.env.APERTUS_API_KEY;
 const CALL_TIMEOUT_MS = 120_000;
 
 function arg(name: string): string | undefined {
@@ -65,7 +66,7 @@ class BenchmarkClient implements ApertusClient {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(process.env.APERTUS_API_KEY ? { Authorization: `Bearer ${process.env.APERTUS_API_KEY}` } : {}),
+          ...(API_KEY ? { Authorization: `Bearer ${API_KEY}` } : {}),
         },
         body: JSON.stringify({ model: this.model, messages, temperature: options.temperature ?? 0.2, max_tokens: options.maxTokens ?? 1500 }),
         signal: controller.signal,
@@ -232,14 +233,14 @@ async function main() {
     results,
   };
 
-  const dir = join(process.cwd(), 'benchmarks', 'results');
+  const dir = join(process.cwd(), '..', 'data', 'benchmark_results');
   mkdirSync(dir, { recursive: true });
   const stamp = started.toISOString().slice(0, 16).replace(/[:T]/g, '-');
   writeFileSync(join(dir, `${stamp}.json`), JSON.stringify(file, null, 1));
   const summary = renderSummary(file);
   writeFileSync(join(dir, `${stamp}-summary.md`), summary);
   writeFileSync(join(dir, 'latest-summary.md'), summary);
-  console.log(`\nWrote benchmarks/results/${stamp}.json and ${stamp}-summary.md\n`);
+  console.log(`\nWrote data/benchmark_results/${stamp}.json and ${stamp}-summary.md\n`);
   console.log(summary);
 }
 

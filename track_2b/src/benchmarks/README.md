@@ -58,13 +58,13 @@ Requirements:
 
 ## Output files
 
-Results go to `benchmarks/results/`:
+Results go to `track_2b/data/benchmark_results/`:
 - `<timestamp>.json`: every case, task, sentence, verdict, Receipts reason and latency. When a task falls back, the model's raw response is included so the failure can be inspected.
 - `<timestamp>-summary.md` and `latest-summary.md`: the tables.
 
 ## Results (final run, 6 October 2026)
 
-20 notices × 2 runs per model, same inputs and prompts, on the Hack Apertus CSCS endpoint. Full tables: [`results/latest-summary.md`](results/latest-summary.md). Every sentence and verdict: `benchmarks/results/2026-10-06-14-50.json`. 
+20 notices × 2 runs per model, same inputs and prompts, on the Hack Apertus CSCS endpoint. Full tables: [`latest-summary.md`](../../data/benchmark_results/latest-summary.md). Every sentence and verdict: `track_2b/data/benchmark_results/2026-10-06-14-50.json`. 
 
 | Automated measurement | Apertus 1.5 8B | Apertus 1.5 70B |
 |---|---|---|
@@ -85,7 +85,7 @@ What this shows:
 - **Receipts still matters for 70B.** It blocked paraphrased "quotes" of the notice, numbers and automation claims that weren't in the cited facts, and a law not in the cited reference (1.5% of 70B's claims).
 - **Run-to-run variation was small:** verified claims 93.8% / 95.0% (8B) and 98.4% / 98.7% (70B).
 
-**How the benchmark improved REDRESS.** The benchmark was run five times, and every result file is kept in `benchmarks/results/`. Each run exposed something that was then fixed with a regression test:
+**How the benchmark improved REDRESS.** The benchmark was run five times, and every result file is kept in `track_2b/data/benchmark_results/`. Each run exposed something that was then fixed with a regression test:
 - **Run 1:** a translation bug, and Receipts false positives such as inline fact IDs being read as numbers.
 - **Runs 2–3:** further false positives, for example general descriptions of what a law covers.
 - **Run 4:** a prompt change that stopped 70B writing French letters in English (it had done so in 4 of 10 French letters), but which also made explanations end with sign-offs.
