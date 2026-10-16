@@ -5,19 +5,25 @@
 // /api/apertus/*. Works with any OpenAI-compatible chat-completions endpoint
 // serving Apertus: a hosted endpoint, Hugging Face, or self-hosted vLLM/Ollama.
 //
-// Configure via environment variables or a .env file in the project root:
-//   APERTUS_API_KEY    the access key (optional for local servers, or when the
-//                      environment injects the credential for the endpoint host)
-//   APERTUS_BASE_URL   default https://api.inference.cscs.ch/v1 (the Hack Apertus
-//                      CSCS endpoint); any OpenAI-compatible /v1 address works
-//   APERTUS_MODEL      optional; if unset, the proxy asks the endpoint's /models
-//                      list and picks an Apertus model
+// Configure via environment variables or a .env file in the project root.
+// The Hack Apertus names (LLM_*) take precedence over the APERTUS_* names:
+//   LLM_API_KEY  / APERTUS_API_KEY   the access key (optional for local servers,
+//                      or when the environment injects the credential)
+//   LLM_BASE_URL / APERTUS_BASE_URL  default https://api.inference.cscs.ch/v1 (the
+//                      Hack Apertus CSCS endpoint); any OpenAI-compatible /v1 address
+//   LLM_NAME     / APERTUS_MODEL     optional; if unset, the proxy asks the
+//                      endpoint's /models list and picks an Apertus model
 //   APERTUS_PROXY_PORT default 8787
+//   APERTUS_PROXY_HOST default 127.0.0.1 (0.0.0.0 inside the Docker container)
+//   STATIC_DIR         optional; serve the built app (dist/) from the same server
 //
 // Run: npm run proxy   (Vite's dev server forwards /api to it)
+// Docker: `make run` builds the app and serves it plus /api on one port.
 // ============================================================================
 
 import http from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { extname, join, resolve, sep } from 'node:path';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
@@ -70,8 +76,43 @@ export function pickApertusModel(ids) {
   return [...pool].sort((a, b) => score(b) - score(a))[0] ?? null;
 }
 
+/** Settings from the environment; the Hack Apertus LLM_* names win over APERTUS_*. */
+export function configFromEnv(env = process.env) {
+  return {
+    baseUrl: env.LLM_BASE_URL || env.APERTUS_BASE_URL || DEFAULT_BASE_URL,
+    apiKey: env.LLM_API_KEY || env.APERTUS_API_KEY || undefined,
+    model: env.LLM_NAME || env.APERTUS_MODEL || undefined,
+  };
+}
+
+const CONTENT_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+  '.json': 'application/json',
+  '.woff2': 'font/woff2',
+};
+
+/** Serve a file from the built app; unknown paths get index.html (single-page app). */
+async function serveStatic(staticDir, pathname, res) {
+  const root = resolve(staticDir);
+  let file = resolve(join(root, decodeURIComponent(pathname)));
+  if (file !== root && !file.startsWith(root + sep)) return sendJson(res, 404, { error: 'Not found' });
+  if (file === root || !extname(file)) file = join(root, 'index.html');
+  try {
+    const body = await readFile(file);
+    res.writeHead(200, { 'Content-Type': CONTENT_TYPES[extname(file)] ?? 'application/octet-stream' });
+    return res.end(body);
+  } catch {
+    return sendJson(res, 404, { error: 'Not found' });
+  }
+}
+
 /** Build the request handler. Exported for tests. */
-export function createHandler({ baseUrl, apiKey, model, fetchImpl = fetch } = {}) {
+export function createHandler({ baseUrl, apiKey, model, staticDir, fetchImpl = fetch } = {}) {
   const configured = Boolean(baseUrl);
   const root = (baseUrl ?? '').replace(/\/+$/, '');
   const authHeaders = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
@@ -135,6 +176,10 @@ export function createHandler({ baseUrl, apiKey, model, fetchImpl = fetch } = {}
       }
     }
 
+    if (staticDir && req.method === 'GET' && !url.pathname.startsWith('/api/')) {
+      return serveStatic(staticDir, url.pathname, res);
+    }
+
     return sendJson(res, 404, { error: 'Not found' });
   };
 }
@@ -161,16 +206,15 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
       // no .env file — environment variables only
     }
     const port = Number(process.env.APERTUS_PROXY_PORT ?? 8787);
-    const baseUrl = process.env.APERTUS_BASE_URL || DEFAULT_BASE_URL;
-    const handler = createHandler({
-      baseUrl,
-      apiKey: process.env.APERTUS_API_KEY,
-      model: process.env.APERTUS_MODEL,
-    });
-    http.createServer(handler).listen(port, '127.0.0.1', () => {
-      const model = process.env.APERTUS_MODEL || 'auto (from the endpoint\'s model list)';
-      const key = process.env.APERTUS_API_KEY ? 'set' : 'not set (relying on the environment to supply it)';
-      console.log(`REDRESS Apertus proxy on http://127.0.0.1:${port} — endpoint ${baseUrl}, model ${model}, key ${key}`);
+    const host = process.env.APERTUS_PROXY_HOST || '127.0.0.1';
+    const config = configFromEnv();
+    const staticDir = process.env.STATIC_DIR || undefined;
+    const handler = createHandler({ ...config, staticDir });
+    http.createServer(handler).listen(port, host, () => {
+      const model = config.model || 'auto (from the endpoint\'s model list)';
+      const key = config.apiKey ? 'set' : 'not set (relying on the environment to supply it)';
+      console.log(`REDRESS Apertus proxy on http://${host}:${port} — endpoint ${config.baseUrl}, model ${model}, key ${key}`);
+      if (staticDir) console.log(`REDRESS app: open http://localhost:${process.env.PUBLIC_PORT ?? port} in your browser`);
     });
   }
 }

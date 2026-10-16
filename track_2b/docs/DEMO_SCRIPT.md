@@ -39,7 +39,7 @@ If a **red, struck-through** sentence appears:
 > "And this one was blocked — the model cited a source that doesn't exist. It never reaches the user as fact."
 
 If none appears in your take, say:
-> "In our benchmark, Receipts caught invented citations, unsupported numbers and laws — this is the safety net when that happens." (Use the figures from `benchmarks/results/latest-summary.md`.)
+> "In our benchmark, Receipts caught invented citations, unsupported numbers and laws — this is the safety net when that happens." (Use the figures from `track_2b/data/benchmark_results/latest-summary.md`.)
 
 **1:35 — Ask anything**
 In **Explain It To Me**, type a question of your own, for example *"Kann ich verlangen, dass ein Mensch meinen Antrag nochmals prüft?"*

@@ -13,7 +13,7 @@ Deadline: **16 October 2026, 12:00 CEST**. ✅ = done and verified in the reposi
 ## Tests
 - ✅ `npm test`, `npm run typecheck`, `npm run lint` and `npm run build` pass (counts in the final report and README)
 - ✅ Live check against real Apertus: `npm run test:live` (with the proxy running)
-- ✅ Benchmark run with real Apertus 1.5 8B and 70B; results in `benchmarks/results/`
+- ✅ Benchmark run with real Apertus 1.5 8B and 70B; results in `track_2b/data/benchmark_results/`
 
 ## Security
 - ✅ No credentials in any commit (full history scanned)

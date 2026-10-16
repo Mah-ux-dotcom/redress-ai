@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import http from 'node:http';
-import { createHandler, pickApertusModel } from './apertus-proxy.mjs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { configFromEnv, createHandler, pickApertusModel } from './apertus-proxy.mjs';
 
 async function withServer(handler, fn) {
   const server = http.createServer(handler);
@@ -92,5 +95,28 @@ describe('Apertus proxy', () => {
     expect(pickApertusModel(cscs)).toBe('swiss-ai/Apertus-v1.5-70B');
     expect(pickApertusModel(['x', 'y'])).toBe('x');
     expect(pickApertusModel([])).toBeNull();
+  });
+
+  it('reads the Hack Apertus LLM_* variables before the APERTUS_* ones', () => {
+    expect(configFromEnv({ LLM_NAME: 'm1', LLM_BASE_URL: 'https://a/v1', LLM_API_KEY: 'k1', APERTUS_MODEL: 'm2', APERTUS_API_KEY: 'k2' })).toEqual({
+      baseUrl: 'https://a/v1',
+      apiKey: 'k1',
+      model: 'm1',
+    });
+    expect(configFromEnv({ APERTUS_API_KEY: 'k2' })).toEqual({ baseUrl: 'https://api.inference.cscs.ch/v1', apiKey: 'k2', model: undefined });
+  });
+
+  it('serves the built app, falls back to index.html, and refuses paths outside it', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'redress-static-'));
+    writeFileSync(join(dir, 'index.html'), '<h1>REDRESS</h1>');
+    writeFileSync(join(dir, 'app.js'), 'console.log(1)');
+    await withServer(createHandler({ staticDir: dir }), async (base) => {
+      expect(await (await fetch(`${base}/`)).text()).toBe('<h1>REDRESS</h1>');
+      expect(await (await fetch(`${base}/some/page`)).text()).toBe('<h1>REDRESS</h1>');
+      const js = await fetch(`${base}/app.js`);
+      expect(js.headers.get('content-type')).toMatch(/javascript/);
+      expect((await fetch(`${base}/..%2f..%2fetc%2fpasswd.txt`)).status).toBe(404);
+      expect((await fetch(`${base}/api/unknown`)).status).toBe(404);
+    });
   });
 });

@@ -266,7 +266,7 @@ describe('Robust reading of model output (found in the 8B benchmark smoke run)',
 
 // ---------------------------------------------------------------------------
 describe('Benchmark findings: checker false positives fixed, genuine errors still blocked', () => {
-  // Sentences below are taken verbatim from the first benchmark run (benchmarks/results/2026-10-05-12-11.json).
+  // Sentences below are taken verbatim from the first benchmark run (data/benchmark_results/2026-10-05-12-11.json).
   const conf = setup('Dear Applicant,\nYour credit application was assessed by our automated system and has been declined.\nRegards,\nExample Bank', 'UK');
   const v = (text: string, cites: string[], c = conf) => verifySentence({ text, cites }, c.sheet, c.automation);
 
